@@ -19,6 +19,13 @@ const solvedPhrase = document.getElementById('solvedPhrase');
 const playAgainBtn = document.getElementById('playAgainBtn');
 const instructions = document.getElementById('instructions');
 const startBtn = document.getElementById('startBtn');
+const guessBtn = document.getElementById('guessBtn');
+const guessModal = document.getElementById('guessModal');
+const guessHint = document.getElementById('guessHint');
+const guessInput = document.getElementById('guessInput');
+const submitGuessBtn = document.getElementById('submitGuessBtn');
+const cancelGuessBtn = document.getElementById('cancelGuessBtn');
+const guessError = document.getElementById('guessError');
 
 // Game state
 let puzzle = null;
@@ -28,6 +35,7 @@ let collectibles = [];
 let obstacles = [];
 let gameStarted = false;
 let gameOver = false;
+let gamePaused = false;
 let animationId = null;
 let score = 0;
 
@@ -113,8 +121,20 @@ function init() {
 
 // Set up keyboard and mouse input
 function setupInput() {
-  // Keyboard input - Space to flap
+  // Keyboard input - Space to flap, G to guess, Escape to close modal
   window.addEventListener('keydown', (e) => {
+    // Handle guess modal
+    if (gamePaused) {
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        hideGuessModal();
+      } else if (e.code === 'Enter') {
+        e.preventDefault();
+        submitGuess();
+      }
+      return;
+    }
+    
     if (e.code === 'Space') {
       e.preventDefault();
       
@@ -125,17 +145,43 @@ function setupInput() {
       } else if (player) {
         player.flap();
       }
+    } else if (e.code === 'KeyG' && gameStarted && !gameOver) {
+      e.preventDefault();
+      showGuessModal();
     }
   });
   
   // Mouse/touch input - Click/tap to flap
   canvas.addEventListener('click', () => {
+    if (gamePaused) return;
+    
     if (!gameStarted) {
       startGame();
     } else if (gameOver) {
       resetGame();
     } else if (player) {
       player.flap();
+    }
+  });
+  
+  // Guess button click
+  guessBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (gameStarted && !gameOver && !gamePaused) {
+      showGuessModal();
+    }
+  });
+  
+  // Submit guess button
+  submitGuessBtn.addEventListener('click', submitGuess);
+  
+  // Cancel guess button
+  cancelGuessBtn.addEventListener('click', hideGuessModal);
+  
+  // Prevent clicks on modal from propagating
+  guessModal.addEventListener('click', (e) => {
+    if (e.target === guessModal) {
+      hideGuessModal();
     }
   });
 }
@@ -215,9 +261,71 @@ function shuffleArray(array) {
   }
 }
 
+// Show guess modal
+function showGuessModal() {
+  gamePaused = true;
+  cancelAnimationFrame(animationId);
+  
+  // Show current progress as hint with styled slots
+  const phrase = puzzle.getReconstructedPhrase();
+  guessHint.innerHTML = phrase.split('').map(char => {
+    if (char === ' ') {
+      return '<span style="display:inline-block;width:0.5em;"></span>';
+    }
+    const isCollected = char !== '_';
+    return `<span class="letter-slot" style="${isCollected ? 'border-bottom-color:#48bb78;color:#48bb78;' : ''}">${char}</span>`;
+  }).join('');
+  
+  guessInput.value = '';
+  guessError.classList.add('hidden');
+  guessModal.classList.remove('hidden');
+  
+  // Focus the input
+  setTimeout(() => guessInput.focus(), 100);
+}
+
+// Hide guess modal
+function hideGuessModal() {
+  gamePaused = false;
+  guessModal.classList.add('hidden');
+  guessInput.value = '';
+  guessError.classList.add('hidden');
+  
+  // Resume game loop
+  if (gameStarted && !gameOver) {
+    gameLoop();
+  }
+}
+
+// Submit guess
+function submitGuess() {
+  const guess = guessInput.value.trim();
+  
+  if (!guess) return;
+  
+  // Compare guess to original phrase (case-insensitive)
+  if (guess.toLowerCase() === puzzle.originalPhrase.toLowerCase()) {
+    // Correct! Mark all pieces as collected and show victory
+    puzzle.pieces.forEach((_, index) => {
+      puzzle.collectedPieces[index] = true;
+    });
+    updateHUD();
+    
+    gamePaused = false;
+    guessModal.classList.add('hidden');
+    gameStarted = false;
+    
+    setTimeout(showVictory, 300);
+  } else {
+    // Incorrect - show error and let them continue
+    guessError.classList.remove('hidden');
+    guessInput.select();
+  }
+}
+
 // Main game loop
 function gameLoop() {
-  if (!gameStarted || gameOver) return;
+  if (!gameStarted || gameOver || gamePaused) return;
   
   // Update
   update();

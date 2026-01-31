@@ -14,8 +14,25 @@
         <span class="label">Collected:</span>
         <span id="piecesDisplay" class="pieces-display"></span>
       </div>
-      <div class="progress" id="progress">
-        <span id="progressText">0 / 0 pieces</span>
+      <div class="hud-right">
+        <div class="progress" id="progress">
+          <span id="progressText">0 / 0 pieces</span>
+        </div>
+        <button id="guessBtn" class="btn-guess">Guess (G)</button>
+      </div>
+    </div>
+    
+    <!-- Guess modal -->
+    <div id="guessModal" class="guess-modal hidden">
+      <div class="guess-content">
+        <h2>Complete the phrase</h2>
+        <p class="guess-hint" id="guessHint"></p>
+        <input type="text" id="guessInput" class="guess-input" placeholder="Type your guess..." autocomplete="off">
+        <div class="guess-buttons">
+          <button id="submitGuessBtn" class="btn-primary">Submit</button>
+          <button id="cancelGuessBtn" class="btn-secondary">Cancel (Esc)</button>
+        </div>
+        <p id="guessError" class="guess-error hidden">Incorrect! Keep collecting letters.</p>
       </div>
     </div>
     
