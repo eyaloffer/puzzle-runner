@@ -19,6 +19,21 @@
     // Only enable analytics on production (not localhost)
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       gtag('config', 'G-6F5288P1JB');
+      
+      // Track phrase when created
+      window.addEventListener('DOMContentLoaded', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+          submitBtn.addEventListener('click', function() {
+            const phraseInput = document.getElementById('phraseInput');
+            if (phraseInput && phraseInput.value) {
+              gtag('event', 'puzzle_created', {
+                'phrase': phraseInput.value
+              });
+            }
+          });
+        }
+      });
     }
   </script>
 </head>

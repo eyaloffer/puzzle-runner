@@ -19,6 +19,15 @@
     // Only enable analytics on production (not localhost)
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       gtag('config', 'G-6F5288P1JB');
+      
+      // Track phrase parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const phrase = urlParams.get('p');
+      if (phrase) {
+        gtag('event', 'puzzle_played', {
+          'phrase': phrase
+        });
+      }
     }
   </script>
 </head>
