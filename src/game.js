@@ -32,6 +32,8 @@ const confettiCanvas = document.getElementById('confettiCanvas');
 const confettiCtx = confettiCanvas.getContext('2d');
 const shareTwitterBtn = document.getElementById('shareTwitter');
 const shareWhatsAppBtn = document.getElementById('shareWhatsApp');
+const timerDisplay = document.getElementById('timerDisplay');
+const completionStats = document.getElementById('completionStats');
 
 // Game state
 let puzzle = null;
@@ -45,6 +47,10 @@ let gamePaused = false;
 let animationId = null;
 let score = 0;
 let failCount = 0;
+
+// Session timer (persists across retries)
+let sessionStartTime = null;
+let completionTime = null;
 
 // Flappy Bird style constants (values may be overridden for mobile)
 let PLAYER_X = 150; // Fixed X position for player
@@ -260,7 +266,12 @@ function startGame() {
   gameStarted = true;
   gameOver = false;
   instructions.classList.add('hidden');
-  
+
+  // Start session timer only on first start (not on retry)
+  if (sessionStartTime === null) {
+    sessionStartTime = performance.now();
+  }
+
   // Create game objects
   world = new World(canvasWidth, canvasHeight);
   player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji });
@@ -296,9 +307,9 @@ function showGuessModal() {
   // Show current progress as hint with styled slots
   const phrase = puzzle.getReconstructedPhrase();
 
-  // Detect if phrase contains Hebrew characters
+  // Detect if phrase contains Hebrew characters for RTL support
   const hasHebrew = /[\u0590-\u05FF]/.test(puzzle.originalPhrase);
-  guessHint.style.direction = hasHebrew ? 'rtl' : 'ltr';
+  guessHint.setAttribute('dir', hasHebrew ? 'rtl' : 'ltr');
   guessInput.style.direction = hasHebrew ? 'rtl' : 'ltr';
 
   guessHint.innerHTML = phrase.split('').map(char => {
@@ -357,15 +368,39 @@ function submitGuess() {
 }
 
 // Main game loop
+// Format time as M:SS or M:SS.s
+function formatTime(ms, includeDecimal = false) {
+  const totalSeconds = ms / 1000;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  const decimal = Math.floor((totalSeconds % 1) * 10);
+
+  if (includeDecimal) {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}.${decimal}`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Update timer display
+function updateTimer() {
+  if (sessionStartTime !== null && timerDisplay) {
+    const elapsed = performance.now() - sessionStartTime;
+    timerDisplay.textContent = formatTime(elapsed);
+  }
+}
+
 function gameLoop() {
   if (!gameStarted || gameOver || gamePaused) return;
-  
+
+  // Update timer
+  updateTimer();
+
   // Update
   update();
-  
+
   // Draw
   draw();
-  
+
   // Continue loop
   animationId = requestAnimationFrame(gameLoop);
 }
@@ -722,15 +757,21 @@ function startConfetti() {
 
 // Show victory screen
 function showVictory() {
+  // Calculate completion time
+  completionTime = performance.now() - sessionStartTime;
+
   victoryScreen.classList.remove('hidden');
   solvedPhrase.textContent = puzzle.originalPhrase;
-  // Show fail counter on victory screen if > 0
-  if (failCount > 0 && failCountDisplay) {
-    failCountDisplay.textContent = `Fails: ${failCount}`;
-    failCountDisplay.classList.remove('hidden');
-  } else if (failCountDisplay) {
-    failCountDisplay.classList.add('hidden');
+
+  // Show completion stats (time and fails)
+  if (completionStats) {
+    const timeStr = formatTime(completionTime, true);
+    const failsText = failCount === 0
+      ? '<span class="flawless">FLAWLESS!</span>'
+      : `${failCount} fail${failCount > 1 ? 's' : ''}`;
+    completionStats.innerHTML = `<span class="time">${timeStr}</span> · ${failsText}`;
   }
+
   // Start confetti celebration
   startConfetti();
 }
@@ -743,15 +784,22 @@ playAgainBtn.addEventListener('click', () => {
 });
 
 // Share button handlers
+// Generate share text with stats
+function getShareText() {
+  const timeStr = formatTime(completionTime, true);
+  const failsText = failCount === 0 ? 'FLAWLESS' : `${failCount} fail${failCount > 1 ? 's' : ''}`;
+  return `I solved this Puzzle Runner in ${timeStr} (${failsText})! 🎉 Can you beat my time?`;
+}
+
 shareTwitterBtn.addEventListener('click', () => {
-  const text = `I just solved a Puzzle Runner challenge! 🎉 Can you figure out the secret phrase?`;
+  const text = getShareText();
   const url = window.location.href;
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
   window.open(twitterUrl, '_blank', 'width=550,height=420');
 });
 
 shareWhatsAppBtn.addEventListener('click', () => {
-  const text = `I just solved a Puzzle Runner challenge! 🎉 Can you figure out the secret phrase?\n${window.location.href}`;
+  const text = `${getShareText()}\n${window.location.href}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(whatsappUrl, '_blank');
 });

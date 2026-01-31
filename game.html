@@ -18,6 +18,9 @@
         <span id="piecesDisplay" class="pieces-display"></span>
       </div>
       <div class="hud-right">
+        <div class="timer" id="timer">
+          <span id="timerDisplay">0:00</span>
+        </div>
         <div class="progress" id="progress">
           <span id="progressText">0 / 0 pieces</span>
         </div>
@@ -56,7 +59,7 @@
           <span class="emoji-bounce" style="--delay: 0.1s">🎉</span>
         </h1>
         <p class="solved-phrase" id="solvedPhrase"></p>
-        <p id="failCountDisplay" class="solved-phrase hidden" style="font-size:1em;padding-top:10px;background:transparent;box-shadow:none;"></p>
+        <p id="completionStats" class="completion-stats"></p>
         <div class="share-buttons">
           <button id="shareTwitter" class="share-btn share-twitter">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">

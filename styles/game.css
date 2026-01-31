@@ -70,6 +70,15 @@ input, button, textarea, select {
   gap: 16px;
 }
 
+.timer {
+  font-weight: 600;
+  color: #7EC8E3;
+  font-size: 1em;
+  font-family: 'Courier New', Courier, monospace;
+  min-width: 50px;
+  text-align: center;
+}
+
 .progress {
   font-weight: 600;
   color: #cbd5e0;
@@ -154,6 +163,12 @@ input, button, textarea, select {
   border-bottom: 2px solid #5B9BD5;
   margin: 0 0.1em;
   padding-bottom: 4px;
+  unicode-bidi: isolate;
+}
+
+/* RTL support for letter slots */
+.guess-hint[dir="rtl"] {
+  unicode-bidi: bidi-override;
 }
 
 .guess-input {
@@ -333,6 +348,24 @@ input, button, textarea, select {
     transparent 70%
   );
   animation: shimmer 3s ease-in-out infinite;
+}
+
+.completion-stats {
+  font-size: 1.2em;
+  color: #7EC8E3;
+  margin-bottom: 24px;
+  animation: buttonFadeIn 0.6s ease-out 0.4s both;
+}
+
+.completion-stats .time {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  color: #FFD93D;
+}
+
+.completion-stats .flawless {
+  color: #48bb78;
+  font-weight: bold;
 }
 
 /* Instructions overlay */
