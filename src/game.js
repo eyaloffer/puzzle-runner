@@ -238,8 +238,8 @@ function startGame() {
   world = new World(canvas.width, canvas.height);
   player = new Player(PLAYER_X, canvas.height / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP });
   
-  // Initialize pieces to spawn - only non-space pieces
-  piecesToSpawn = puzzle.getNonSpaceIndices().slice();
+  // Initialize pieces to spawn - only one index per distinct non-space character
+  piecesToSpawn = puzzle.getUniqueNonSpaceIndices().slice();
   shuffleArray(piecesToSpawn);
   
   // Reset game state
@@ -418,12 +418,19 @@ function spawnCollectibles() {
   // Spawn collectibles periodically (less frequently than obstacles)
   // Place them in safe zones between obstacles
   if (piecesToSpawn.length > 0 && frameCount % COLLECTIBLE_SPAWN_FRAMES === 0) {
+    // Skip any indices that were collected via duplicate collection rule
+    while (piecesToSpawn.length > 0 && puzzle.collectedPieces[piecesToSpawn[0]]) {
+      piecesToSpawn.shift();
+    }
+    if (piecesToSpawn.length === 0) return;
+
     const nextIndex = piecesToSpawn.shift();
     const piece = puzzle.getPiece(nextIndex);
-    
+    if (piece == null) return;
+
     const spawnX = canvas.width + 100;
     const spawnY = 100 + Math.random() * (canvas.height - 200);
-    
+
     const collectible = new Collectible(spawnX, spawnY, nextIndex, piece);
     // apply mobile-friendly adjustments
     collectible.scrollSpeed = SCROLL_SPEED;
@@ -460,7 +467,7 @@ function updateCollectibles() {
 // Check collisions
 function checkCollisions() {
   const playerBounds = player.getBounds();
-  
+
   // Check collision with obstacles
   for (const obstacle of obstacles) {
     if (obstacle.collidesWith(playerBounds)) {
@@ -468,20 +475,28 @@ function checkCollisions() {
       return;
     }
   }
-  
+
   // Check if player went out of bounds
   if (player.isOutOfBounds(canvas.height)) {
     triggerGameOver();
     return;
   }
-  
+
   // Check collision with collectibles
   collectibles.forEach(collectible => {
     if (!collectible.collected && collectible.intersects(playerBounds)) {
       collectible.collect();
+      // Collect all identical characters in the puzzle
       puzzle.collectPiece(collectible.pieceIndex);
       updateHUD();
       playCollectSound();
+
+      // Remove any other on-screen collectibles of same character
+      collectibles.forEach(c => {
+        if (!c.collected && c.pieceText === collectible.pieceText) {
+          c.collected = true;
+        }
+      });
     }
   });
 }

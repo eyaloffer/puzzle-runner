@@ -35,21 +35,28 @@ export class Puzzle {
   }
   
   /**
-   * Mark a piece as collected
+   * Mark a piece as collected (collects all identical characters)
    * @param {number} index - Index of the piece to collect
-   * @returns {boolean} - Whether the piece was newly collected
+   * @returns {boolean} - Whether any piece was newly collected
    */
   collectPiece(index) {
     if (index < 0 || index >= this.pieces.length) {
       return false;
     }
-    
-    if (!this.collectedPieces[index]) {
-      this.collectedPieces[index] = true;
-      return true;
-    }
-    
-    return false;
+
+    const target = this.pieces[index];
+    if (target == null) return false;
+
+    let newlyCollected = false;
+    // Collect all pieces equal to target (so one pickup covers duplicates)
+    this.pieces.forEach((piece, i) => {
+      if (piece === target && !this.collectedPieces[i]) {
+        this.collectedPieces[i] = true;
+        newlyCollected = true;
+      }
+    });
+
+    return newlyCollected;
   }
   
   /**
@@ -151,5 +158,21 @@ export class Puzzle {
    */
   getPiece(index) {
     return this.pieces[index] || null;
+  }
+  
+  /**
+   * Return one index per distinct non-space character (used to spawn each letter only once)
+   * @returns {Array<number>}
+   */
+  getUniqueNonSpaceIndices() {
+    const seen = new Set();
+    const indices = [];
+    this.pieces.forEach((piece, index) => {
+      if (piece !== ' ' && !seen.has(piece)) {
+        seen.add(piece);
+        indices.push(index);
+      }
+    });
+    return indices;
   }
 }
