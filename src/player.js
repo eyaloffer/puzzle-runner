@@ -12,9 +12,15 @@ export class Player {
     this.height = 40; // Made square for Flappy Bird style
     this.velocityY = 0;
     this.gravity = typeof opts.gravity === 'number' ? opts.gravity : 0.6;
-    this.flapStrength = typeof opts.flapStrength === 'number' ? opts.flapStrength : -10; // Upward impulse on jump/flap
+    this.flapStrength = typeof opts.flapStrength === 'number' ? opts.flapStrength : -10;
     this.emoji = opts.emoji || '🐦';
     this.rotation = 0; // Visual rotation based on velocity
+    this.collectEffect = 0; // Collection animation timer
+
+    // Trail effect - smooth glowing particles
+    this.trail = [];
+    this.maxTrailLength = 12;
+    this.trailColor = '#5B9BD5'; // Match theme color
   }
 
   /**
@@ -29,12 +35,46 @@ export class Player {
     this.y += this.velocityY;
 
     // Calculate rotation based on velocity (for visual effect)
-    // Smoothly interpolate rotation toward velocity-based target
     const targetRotation = Math.min(Math.max(this.velocityY * 0.05, -0.5), 0.5);
     this.rotation += (targetRotation - this.rotation) * 0.15;
 
-    // Keep player within screen bounds (but don't reset on collision - game should handle that)
-    // Just clamp the position
+    // Decay collect effect
+    if (this.collectEffect > 0) {
+      this.collectEffect -= 0.1;
+    }
+
+    // Update trail - add particle every frame for smooth continuous trail
+    this.trail.push({
+      x: this.x + this.width / 2,
+      y: this.y + this.height / 2,
+      size: 6 + Math.abs(this.velocityY) * 0.3, // Slightly larger when moving fast
+      alpha: 0.6
+    });
+
+    // Limit trail length
+    if (this.trail.length > this.maxTrailLength) {
+      this.trail.shift();
+    }
+
+    // Update trail particles
+    this.trail.forEach((particle, index) => {
+      if (particle.isBurst) {
+        // Burst particles have velocity and fade out
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.15; // gravity
+        particle.alpha -= 0.04;
+        particle.size *= 0.96;
+      } else {
+        // Regular trail: progressive fade based on position
+        particle.alpha = 0.4 * (index / this.trail.length);
+      }
+    });
+
+    // Remove faded burst particles
+    this.trail = this.trail.filter(p => !p.isBurst || p.alpha > 0);
+
+    // Keep player within screen bounds
     if (this.y < 0) {
       this.y = 0;
       this.velocityY = 0;
@@ -46,12 +86,34 @@ export class Player {
   }
 
   /**
+   * Trigger collection effect
+   */
+  triggerCollectEffect() {
+    this.collectEffect = 1;
+  }
+
+  /**
    * Make player flap (jump upward)
    */
   flap() {
     // Snap tilt up immediately for a "kick" effect
     this.rotation = -0.4;
     this.velocityY = this.flapStrength;
+
+    // Add burst particles on flap
+    for (let i = 0; i < 4; i++) {
+      const angle = (Math.PI / 2) + (Math.random() - 0.5) * 0.8; // Downward spread
+      const speed = 2 + Math.random() * 2;
+      this.trail.push({
+        x: this.x + this.width / 2,
+        y: this.y + this.height / 2 + 5,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 4 + Math.random() * 3,
+        alpha: 0.8,
+        isBurst: true
+      });
+    }
   }
 
   /**
@@ -61,6 +123,72 @@ export class Player {
     this.y = this.initialY;
     this.velocityY = 0;
     this.rotation = 0;
+    this.trail = [];
+  }
+
+  /**
+   * Draw the trail effect - smooth glowing particles
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  drawTrail(ctx) {
+    if (this.trail.length < 2) return;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Draw connecting line for smooth trail
+    const regularTrail = this.trail.filter(p => !p.isBurst);
+    if (regularTrail.length >= 2) {
+      ctx.beginPath();
+      ctx.moveTo(regularTrail[0].x, regularTrail[0].y);
+
+      for (let i = 1; i < regularTrail.length; i++) {
+        const p = regularTrail[i];
+        ctx.lineTo(p.x, p.y);
+      }
+
+      // Gradient stroke
+      const gradient = ctx.createLinearGradient(
+        regularTrail[0].x, regularTrail[0].y,
+        regularTrail[regularTrail.length - 1].x, regularTrail[regularTrail.length - 1].y
+      );
+      gradient.addColorStop(0, 'rgba(91, 155, 213, 0)');
+      gradient.addColorStop(0.5, 'rgba(91, 155, 213, 0.3)');
+      gradient.addColorStop(1, 'rgba(91, 155, 213, 0.5)');
+
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      // Inner brighter line
+      ctx.strokeStyle = 'rgba(126, 200, 227, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // Draw burst particles as glowing dots
+    this.trail.filter(p => p.isBurst).forEach(particle => {
+      ctx.globalAlpha = particle.alpha;
+
+      // Outer glow
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = this.trailColor;
+
+      ctx.fillStyle = 'rgba(126, 200, 227, 0.8)';
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright center
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
   }
 
   /**
@@ -68,11 +196,29 @@ export class Player {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw(ctx) {
+    // Draw trail first (behind player)
+    this.drawTrail(ctx);
+
     ctx.save();
+
+    // Reset any lingering state
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
 
     // Translate to player center for rotation
     ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
     ctx.rotate(this.rotation);
+
+    // Apply collect effect (scale up briefly)
+    const scale = 1 + this.collectEffect * 0.3;
+    ctx.scale(scale, scale);
+
+    // Draw glow during collection
+    if (this.collectEffect > 0) {
+      ctx.shadowBlur = 20 * this.collectEffect;
+      ctx.shadowColor = '#FFD93D';
+    }
 
     // Draw emoji character
     ctx.font = `${this.width * 1.2}px serif`;

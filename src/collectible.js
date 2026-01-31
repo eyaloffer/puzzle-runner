@@ -47,40 +47,46 @@ export class Collectible {
    */
   draw(ctx) {
     if (this.collected) return;
-    
+
     const displayY = this.y + Math.sin(this.bobOffset) * 5;
-    
+
     ctx.save();
+
+    // Reset state
+    ctx.globalAlpha = 1;
+
     ctx.translate(this.x + this.width / 2, displayY + this.height / 2);
     ctx.rotate(this.rotation);
-    
+
     // Outer glow
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 15;
-    
+
     // Draw collectible background
     ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(0, 0, this.width / 2, 0, Math.PI * 2);
     ctx.fill();
-    
+
+    // Reset shadow for inner elements
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+
     // Draw inner circle
     ctx.fillStyle = '#FFF5CC';
     ctx.beginPath();
     ctx.arc(0, 0, this.width / 2 - 4, 0, Math.PI * 2);
     ctx.fill();
-    
-    ctx.shadowBlur = 0;
-    
+
     // Draw the piece text
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 24px Arial';
+    ctx.fillStyle = '#1E3A5F';
+    ctx.font = "bold 22px 'Secular One', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.pieceText, 0, 0);
-    
+
     ctx.restore();
-    
+
     // Draw sparkles
     this.drawSparkles(ctx, displayY);
   }
@@ -97,17 +103,20 @@ export class Collectible {
       { x: -15, y: 15 },
       { x: 15, y: 15 }
     ];
-    
-    ctx.fillStyle = '#FFF';
+
     sparklePositions.forEach((pos, i) => {
       const offset = Math.sin(this.bobOffset + i) * 3;
       const sparkleX = this.x + this.width / 2 + pos.x + offset;
       const sparkleY = displayY + this.height / 2 + pos.y + offset;
-      
+
       ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = '#FFF';
       ctx.translate(sparkleX, sparkleY);
       ctx.rotate(this.rotation + i);
-      
+
       // Draw star shape
       ctx.beginPath();
       ctx.moveTo(0, -3);
@@ -120,7 +129,7 @@ export class Collectible {
       ctx.lineTo(-1, -1);
       ctx.closePath();
       ctx.fill();
-      
+
       ctx.restore();
     });
   }

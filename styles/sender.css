@@ -14,79 +14,95 @@ body {
   padding: 20px;
 }
 
+/* Ensure all inputs and buttons inherit font */
+input, button, textarea, select {
+  font-family: inherit;
+}
+
 .container {
   background: white;
-  border-radius: 12px;
-  padding: 40px;
-  max-width: 600px;
+  border-radius: 16px;
+  padding: 45px 50px;
+  max-width: 550px;
   width: 100%;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
 h1 {
   color: #1E3A5F;
-  margin-bottom: 10px;
-  font-size: 2.5em;
+  margin-bottom: 12px;
+  font-size: 2.4em;
   text-align: center;
+  font-weight: 600;
 }
 
 .subtitle {
   color: #666;
   text-align: center;
-  margin-bottom: 30px;
-  font-size: 1.1em;
+  margin-bottom: 35px;
+  font-size: 1.05em;
+  line-height: 1.5;
 }
 
 .form-section {
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 label {
   display: block;
-  margin-bottom: 10px;
-  color: #444;
+  margin-bottom: 12px;
+  color: #1E3A5F;
   font-weight: 500;
   font-size: 1em;
+  text-align: center;
 }
 
 #phraseInput {
   width: 100%;
-  padding: 15px;
+  padding: 16px 20px;
   font-size: 1.1em;
   border: 2px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  transition: border-color 0.3s;
+  border-radius: 10px;
+  margin-bottom: 25px;
+  transition: border-color 0.3s, box-shadow 0.3s;
   direction: auto;
   unicode-bidi: plaintext;
+  text-align: center;
 }
 
 #phraseInput:focus {
   outline: none;
   border-color: #5B9BD5;
+  box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.15);
+}
+
+#phraseInput::placeholder {
+  color: #aaa;
 }
 
 .btn-primary,
 .btn-secondary {
-  padding: 15px 30px;
+  padding: 16px 32px;
   font-size: 1.1em;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
+  font-family: 'Secular One', sans-serif;
 }
 
 .btn-primary {
-  background: #5B9BD5;
+  background: linear-gradient(135deg, #5B9BD5 0%, #4A90D9 100%);
   color: white;
   width: 100%;
+  box-shadow: 0 4px 15px rgba(91, 155, 213, 0.3);
 }
 
 .btn-primary:hover {
-  background: #4A90D9;
+  background: linear-gradient(135deg, #4A90D9 0%, #3a7bc8 100%);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(91, 155, 213, 0.4);
+  box-shadow: 0 6px 20px rgba(91, 155, 213, 0.4);
 }
 
 .btn-primary:active {
@@ -94,47 +110,62 @@ label {
 }
 
 .btn-secondary {
-  background: #48bb78;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
   color: white;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
 }
 
 .btn-secondary:hover {
-  background: #38a169;
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
 }
 
 .link-section {
-  padding-top: 20px;
+  padding-top: 25px;
   border-top: 2px solid #eee;
-  margin-top: 20px;
+  margin-top: 25px;
 }
 
 .link-section.hidden {
   display: none;
 }
 
+.link-section label {
+  margin-bottom: 12px;
+}
+
 .link-container {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 15px;
 }
 
 .link-input {
   flex: 1;
-  padding: 12px;
-  font-size: 0.95em;
+  padding: 14px 16px;
+  font-size: 0.9em;
   border: 2px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #f9f9f9;
-  font-family: monospace;
+  font-family: 'Courier New', Courier, monospace;
+  color: #333;
+}
+
+.link-input:focus {
+  outline: none;
+  border-color: #5B9BD5;
 }
 
 .success-message {
-  color: #48bb78;
+  color: #38a169;
   font-weight: 500;
   text-align: center;
-  padding: 10px;
+  padding: 14px 20px;
   background: #f0fff4;
-  border-radius: 6px;
+  border-radius: 10px;
+  font-size: 1em;
+  border: 1px solid #c6f6d5;
 }
 
 .success-message.hidden {
@@ -143,24 +174,27 @@ label {
 
 /* Emoji picker */
 .emoji-section {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.emoji-section label {
+  margin-bottom: 15px;
 }
 
 .emoji-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
-  margin-top: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 18px;
 }
 
 .emoji-option {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   font-size: 28px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   background: #f9f9f9;
   cursor: pointer;
   transition: all 0.2s;
@@ -172,19 +206,20 @@ label {
 .emoji-option:hover {
   border-color: #5B9BD5;
   background: #E8F4FD;
+  transform: scale(1.05);
 }
 
 .emoji-option.selected {
   border-color: #5B9BD5;
   background: #E8F4FD;
-  box-shadow: 0 2px 8px rgba(91, 155, 213, 0.3);
+  box-shadow: 0 3px 10px rgba(91, 155, 213, 0.25);
+  transform: scale(1.05);
 }
 
 .emoji-custom-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
   justify-content: center;
 }
 
@@ -195,11 +230,11 @@ label {
 
 #customEmojiInput {
   width: 60px;
-  height: 48px;
+  height: 52px;
   font-size: 28px;
   text-align: center;
-  border: 2px solid #ddd;
-  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   background: #f9f9f9;
   transition: all 0.2s;
 }
@@ -208,40 +243,106 @@ label {
   outline: none;
   border-color: #5B9BD5;
   background: #E8F4FD;
+  box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.15);
 }
 
 #customEmojiInput.selected {
   border-color: #5B9BD5;
   background: #E8F4FD;
-  box-shadow: 0 2px 8px rgba(91, 155, 213, 0.3);
+  box-shadow: 0 3px 10px rgba(91, 155, 213, 0.25);
+}
+
+#customEmojiInput::placeholder {
+  font-size: 24px;
+  opacity: 0.5;
 }
 
 @media (max-width: 600px) {
+  body {
+    padding: 15px;
+  }
+
   .container {
-    padding: 25px;
+    padding: 30px 25px;
+    border-radius: 14px;
   }
 
   h1 {
     font-size: 2em;
+    margin-bottom: 10px;
+  }
+
+  .subtitle {
+    font-size: 0.95em;
+    margin-bottom: 28px;
+  }
+
+  #phraseInput {
+    padding: 14px 16px;
+    font-size: 1em;
+    margin-bottom: 22px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 14px 28px;
+    font-size: 1em;
   }
 
   .link-container {
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .link-input {
+    padding: 12px 14px;
   }
 
   .btn-secondary {
     width: 100%;
   }
 
+  .emoji-grid {
+    gap: 8px;
+  }
+
   .emoji-option {
-    width: 42px;
-    height: 42px;
+    width: 46px;
+    height: 46px;
     font-size: 24px;
+    border-radius: 10px;
   }
 
   #customEmojiInput {
-    width: 50px;
-    height: 42px;
+    width: 52px;
+    height: 46px;
     font-size: 24px;
+    border-radius: 10px;
+  }
+
+  .emoji-custom-wrapper span {
+    font-size: 0.9em;
+  }
+}
+
+@media (max-width: 400px) {
+  .container {
+    padding: 25px 20px;
+  }
+
+  h1 {
+    font-size: 1.8em;
+  }
+
+  .emoji-option {
+    width: 42px;
+    height: 42px;
+    font-size: 22px;
+  }
+
+  #customEmojiInput {
+    width: 48px;
+    height: 42px;
+    font-size: 22px;
   }
 }

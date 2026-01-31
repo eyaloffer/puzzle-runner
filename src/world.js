@@ -1,46 +1,61 @@
 /**
- * World class - handles static background for Flappy Bird style
+ * World class - handles background with parallax clouds
  */
 
 export class World {
   constructor(canvasWidth, canvasHeight) {
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
-    
-    // Clouds for background
-    this.clouds = this.generateClouds();
+
+    // Multiple cloud layers for parallax effect
+    this.cloudLayers = [
+      this.generateClouds(5, 0.3, 0.6, 50, 70),   // Back layer - big, slow, faint
+      this.generateClouds(6, 0.5, 0.75, 35, 50),  // Middle layer
+      this.generateClouds(8, 0.8, 0.9, 20, 35),   // Front layer - small, fast, bright
+    ];
   }
-  
+
   /**
-   * Generate background clouds
+   * Generate a layer of background clouds
    */
-  generateClouds() {
+  generateClouds(count, speedMultiplier, opacity, minSize, maxSize) {
     const clouds = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < count; i++) {
       clouds.push({
-        x: Math.random() * this.canvasWidth,
-        y: Math.random() * (this.canvasHeight / 2),
-        size: 30 + Math.random() * 30,
-        speed: 0.2 + Math.random() * 0.3
+        x: Math.random() * this.canvasWidth * 1.5,
+        y: Math.random() * (this.canvasHeight * 0.6),
+        size: minSize + Math.random() * (maxSize - minSize),
+        speed: (0.3 + Math.random() * 0.4) * speedMultiplier,
+        opacity: opacity,
+        // Slight vertical drift
+        yOffset: Math.random() * Math.PI * 2,
+        yDrift: 0.2 + Math.random() * 0.3
       });
     }
     return clouds;
   }
-  
+
   /**
-   * Update world (just animate clouds slowly)
+   * Update world (animate clouds with parallax)
    */
   update() {
-    // Slow cloud movement for parallax effect
-    this.clouds.forEach(cloud => {
-      cloud.x -= cloud.speed;
-      if (cloud.x + cloud.size * 2 < 0) {
-        cloud.x = this.canvasWidth + cloud.size;
-        cloud.y = Math.random() * (this.canvasHeight / 2);
-      }
+    this.cloudLayers.forEach(layer => {
+      layer.forEach(cloud => {
+        // Horizontal movement
+        cloud.x -= cloud.speed;
+
+        // Gentle vertical drift
+        cloud.yOffset += 0.01;
+
+        // Wrap around when off screen
+        if (cloud.x + cloud.size * 2.5 < 0) {
+          cloud.x = this.canvasWidth + cloud.size;
+          cloud.y = Math.random() * (this.canvasHeight * 0.6);
+        }
+      });
     });
   }
-  
+
   /**
    * Draw the world
    * @param {CanvasRenderingContext2D} ctx
@@ -49,29 +64,40 @@ export class World {
     // Sky gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, this.canvasHeight);
     gradient.addColorStop(0, '#87CEEB');
+    gradient.addColorStop(0.5, '#B0E0F0');
     gradient.addColorStop(1, '#E0F6FF');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-    
-    // Clouds
-    this.drawClouds(ctx);
+
+    // Draw cloud layers (back to front)
+    this.cloudLayers.forEach(layer => {
+      this.drawCloudLayer(ctx, layer);
+    });
   }
-  
+
   /**
-   * Draw clouds
+   * Draw a layer of clouds
    * @param {CanvasRenderingContext2D} ctx
+   * @param {Array} clouds
    */
-  drawClouds(ctx) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    this.clouds.forEach(cloud => {
+  drawCloudLayer(ctx, clouds) {
+    clouds.forEach(cloud => {
+      const yDrift = Math.sin(cloud.yOffset) * cloud.yDrift * 3;
+      const y = cloud.y + yDrift;
+
+      ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
       ctx.beginPath();
-      ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
-      ctx.arc(cloud.x + cloud.size * 0.6, cloud.y - cloud.size * 0.3, cloud.size * 0.8, 0, Math.PI * 2);
-      ctx.arc(cloud.x + cloud.size * 1.2, cloud.y, cloud.size * 0.9, 0, Math.PI * 2);
+
+      // Main cloud body
+      ctx.arc(cloud.x, y, cloud.size, 0, Math.PI * 2);
+      ctx.arc(cloud.x + cloud.size * 0.6, y - cloud.size * 0.25, cloud.size * 0.75, 0, Math.PI * 2);
+      ctx.arc(cloud.x + cloud.size * 1.1, y + cloud.size * 0.1, cloud.size * 0.85, 0, Math.PI * 2);
+      ctx.arc(cloud.x - cloud.size * 0.4, y + cloud.size * 0.15, cloud.size * 0.6, 0, Math.PI * 2);
+
       ctx.fill();
     });
   }
-  
+
   /**
    * Resize world when canvas changes
    * @param {number} width

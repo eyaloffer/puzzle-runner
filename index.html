@@ -21,45 +21,70 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      padding: 20px;
     }
 
     .container {
       background: white;
-      border-radius: 12px;
-      padding: 60px;
-      max-width: 500px;
+      border-radius: 16px;
+      padding: 60px 50px;
+      max-width: 480px;
+      width: 100%;
       text-align: center;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     }
 
     h1 {
       color: #1E3A5F;
-      font-size: 3em;
+      font-size: 2.8em;
       margin-bottom: 20px;
+      font-weight: 600;
     }
 
     p {
       color: #666;
-      font-size: 1.2em;
-      margin-bottom: 40px;
+      font-size: 1.1em;
+      margin-bottom: 35px;
+      line-height: 1.6;
     }
 
     a {
       display: inline-block;
-      padding: 15px 40px;
-      background: #5B9BD5;
+      padding: 16px 44px;
+      background: linear-gradient(135deg, #5B9BD5 0%, #4A90D9 100%);
       color: white;
       text-decoration: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-weight: 600;
-      font-size: 1.2em;
+      font-size: 1.15em;
       transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(91, 155, 213, 0.3);
     }
 
     a:hover {
-      background: #4A90D9;
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(91, 155, 213, 0.4);
+      background: linear-gradient(135deg, #4A90D9 0%, #3a7bc8 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(91, 155, 213, 0.4);
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 45px 30px;
+      }
+
+      h1 {
+        font-size: 2.2em;
+      }
+
+      p {
+        font-size: 1em;
+        margin-bottom: 30px;
+      }
+
+      a {
+        padding: 14px 36px;
+        font-size: 1.1em;
+      }
     }
   </style>
 </head>

@@ -237,30 +237,22 @@ function resizeCanvas() {
 
 // Draw initial screen before game starts
 function drawInitialScreen() {
-  ctx.fillStyle = '#87ceeb';
+  // Just draw a clean sky gradient background
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+  gradient.addColorStop(0, '#87CEEB');
+  gradient.addColorStop(1, '#E0F6FF');
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-  
-  // Draw title text
-  ctx.fillStyle = '#333';
-  ctx.font = 'bold 48px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText('Flappy Puzzle', canvasWidth / 2, canvasHeight / 2 - 100);
-  
-  // Draw phrase info
-  ctx.font = '24px Arial';
-  ctx.fillText(`Collect ${puzzle.getNonSpaceCount()} letters to reveal the phrase!`, 
-               canvasWidth / 2, canvasHeight / 2 - 40);
-  
-  ctx.font = '20px Arial';
-  ctx.fillStyle = '#666';
-  ctx.fillText('Click or press SPACE to start', 
-               canvasWidth / 2, canvasHeight / 2 + 20);
 }
 
 // Update HUD display
 function updateHUD() {
   piecesDisplay.textContent = puzzle.getReconstructedPhrase();
   progressText.textContent = `${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`;
+
+  // Apply RTL for Hebrew phrases
+  const hasHebrew = /[\u0590-\u05FF]/.test(puzzle.originalPhrase);
+  piecesDisplay.style.direction = hasHebrew ? 'rtl' : 'ltr';
 }
 
 // Start the game
@@ -300,21 +292,27 @@ function shuffleArray(array) {
 function showGuessModal() {
   gamePaused = true;
   cancelAnimationFrame(animationId);
-  
+
   // Show current progress as hint with styled slots
   const phrase = puzzle.getReconstructedPhrase();
+
+  // Detect if phrase contains Hebrew characters
+  const hasHebrew = /[\u0590-\u05FF]/.test(puzzle.originalPhrase);
+  guessHint.style.direction = hasHebrew ? 'rtl' : 'ltr';
+  guessInput.style.direction = hasHebrew ? 'rtl' : 'ltr';
+
   guessHint.innerHTML = phrase.split('').map(char => {
     if (char === ' ') {
       return '<span style="display:inline-block;width:0.5em;"></span>';
     }
     const isCollected = char !== '_';
-    return `<span class="letter-slot" style="${isCollected ? 'border-bottom-color:#48bb78;color:#48bb78;' : ''}">${char}</span>`;
+    return `<span class="letter-slot" style="${isCollected ? 'border-bottom-color:#7EC8E3;color:#7EC8E3;' : ''}">${char}</span>`;
   }).join('');
-  
+
   guessInput.value = '';
   guessError.classList.add('hidden');
   guessModal.classList.remove('hidden');
-  
+
   // Focus the input
   setTimeout(() => guessInput.focus(), 100);
 }
@@ -536,6 +534,9 @@ function checkCollisions() {
       updateHUD();
       playCollectSound();
 
+      // Trigger visual effect on player
+      player.triggerCollectEffect();
+
       // Remove any other on-screen collectibles of same character
       collectibles.forEach(c => {
         if (!c.collected && c.pieceText === collectible.pieceText) {
@@ -560,34 +561,36 @@ function triggerGameOver() {
 // Show game over screen
 function showGameOverScreen() {
   // Draw semi-transparent overlay
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillStyle = 'rgba(30, 58, 95, 0.85)';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-  
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
   // Game over text
   ctx.fillStyle = '#FF6B6B';
-  ctx.font = 'bold 60px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText('Game Over!', canvasWidth / 2, canvasHeight / 2 - 50);
-  
+  ctx.font = "bold 52px 'Secular One', sans-serif";
+  ctx.fillText('Game Over!', canvasWidth / 2, canvasHeight / 2 - 60);
+
   // Instructions
   ctx.fillStyle = '#FFF';
-  ctx.font = '28px Arial';
-  ctx.fillText('Click or press SPACE to retry', canvasWidth / 2, canvasHeight / 2 + 30);
-  
+  ctx.font = "24px 'Secular One', sans-serif";
+  ctx.fillText('Click or press SPACE to retry', canvasWidth / 2, canvasHeight / 2 + 10);
+
   // Progress
-  ctx.font = '20px Arial';
-  ctx.fillStyle = '#FFD93D';
+  ctx.font = "20px 'Secular One', sans-serif";
+  ctx.fillStyle = '#7EC8E3';
   ctx.fillText(
     `Collected: ${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`,
     canvasWidth / 2,
-    canvasHeight / 2 + 80
+    canvasHeight / 2 + 60
   );
 
   // Show fail counter on game over if greater than zero
   if (failCount > 0) {
-    ctx.font = '18px Arial';
+    ctx.font = "18px 'Secular One', sans-serif";
     ctx.fillStyle = '#FFD93D';
-    ctx.fillText(`Fails: ${failCount}`, canvasWidth / 2, canvasHeight / 2 + 120);
+    ctx.fillText(`Fails: ${failCount}`, canvasWidth / 2, canvasHeight / 2 + 100);
   }
 }
 
