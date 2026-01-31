@@ -168,10 +168,9 @@ export class Player {
     }
 
     // Draw burst particles as glowing dots
-    this.trail.filter(p => p.isBurst).forEach(particle => {
+    const burstParticles = this.trail.filter(p => p.isBurst);
+    for (const particle of burstParticles) {
       ctx.globalAlpha = particle.alpha;
-
-      // Outer glow
       ctx.shadowBlur = 8;
       ctx.shadowColor = this.trailColor;
 
@@ -182,11 +181,18 @@ export class Player {
 
       // Bright center
       ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size * 0.4, 0, Math.PI * 2);
       ctx.fill();
-    });
+    }
+
+    // Reset state before restore (mobile browser fix)
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#000000';
 
     ctx.restore();
   }
@@ -196,15 +202,22 @@ export class Player {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw(ctx) {
-    // Draw trail first (behind player)
-    this.drawTrail(ctx);
-
-    ctx.save();
-
-    // Reset any lingering state
+    // Reset all state before drawing (fix for mobile browsers)
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#000000';
+    ctx.strokeStyle = '#000000';
+
+    // Draw trail first (behind player)
+    this.drawTrail(ctx);
+
+    // Reset again after trail (mobile browsers may not restore properly)
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+
+    ctx.save();
 
     // Translate to player center for rotation
     ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
@@ -220,8 +233,9 @@ export class Player {
       ctx.shadowColor = '#FFD93D';
     }
 
-    // Draw emoji character
-    ctx.font = `${this.width * 1.2}px serif`;
+    // Draw emoji character (explicit fillStyle needed for mobile)
+    ctx.fillStyle = '#000000';
+    ctx.font = `${this.width * 1.2}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.emoji, 0, 0);
