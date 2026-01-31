@@ -8,6 +8,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Secular+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/sender.css">
+  
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-6F5288P1JB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    
+    // Only enable analytics on production (not localhost)
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      gtag('config', 'G-6F5288P1JB');
+      
+      // Track phrase when created
+      window.addEventListener('DOMContentLoaded', function() {
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+          submitBtn.addEventListener('click', function() {
+            const phraseInput = document.getElementById('phraseInput');
+            if (phraseInput && phraseInput.value) {
+              gtag('event', 'puzzle_created', {
+                'phrase': phraseInput.value
+              });
+            }
+          });
+        }
+      });
+    }
+  </script>
 </head>
 <body>
   <div class="container">
