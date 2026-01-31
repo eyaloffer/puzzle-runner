@@ -36,17 +36,31 @@ export class Obstacle {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw(ctx) {
-    const pipeColor = '#4CAF50';
-    const pipeCapColor = '#45A049';
     const capHeight = 30;
     const capOverhang = 5;
     
+    // Create horizontal gradient for 3D pipe effect
+    const pipeGradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+    pipeGradient.addColorStop(0, '#2E7D32');    // dark green (left edge - shadow)
+    pipeGradient.addColorStop(0.2, '#4CAF50');  // medium green
+    pipeGradient.addColorStop(0.5, '#81C784');  // light green (center - highlight)
+    pipeGradient.addColorStop(0.8, '#4CAF50');  // medium green
+    pipeGradient.addColorStop(1, '#2E7D32');    // dark green (right edge - shadow)
+    
+    // Create gradient for caps (slightly darker/more contrast)
+    const capGradient = ctx.createLinearGradient(this.x - capOverhang, 0, this.x + this.width + capOverhang, 0);
+    capGradient.addColorStop(0, '#1B5E20');     // darker green (left edge)
+    capGradient.addColorStop(0.15, '#388E3C');  // medium-dark green
+    capGradient.addColorStop(0.5, '#66BB6A');   // lighter green (center highlight)
+    capGradient.addColorStop(0.85, '#388E3C');  // medium-dark green
+    capGradient.addColorStop(1, '#1B5E20');     // darker green (right edge)
+    
     // Top pipe body
-    ctx.fillStyle = pipeColor;
+    ctx.fillStyle = pipeGradient;
     ctx.fillRect(this.x, 0, this.width, this.topHeight - capHeight);
     
     // Top pipe cap
-    ctx.fillStyle = pipeCapColor;
+    ctx.fillStyle = capGradient;
     ctx.fillRect(
       this.x - capOverhang,
       this.topHeight - capHeight,
@@ -55,7 +69,7 @@ export class Obstacle {
     );
     
     // Bottom pipe cap
-    ctx.fillStyle = pipeCapColor;
+    ctx.fillStyle = capGradient;
     ctx.fillRect(
       this.x - capOverhang,
       this.bottomY,
@@ -64,7 +78,7 @@ export class Obstacle {
     );
     
     // Bottom pipe body
-    ctx.fillStyle = pipeColor;
+    ctx.fillStyle = pipeGradient;
     ctx.fillRect(
       this.x,
       this.bottomY + capHeight,
@@ -72,8 +86,8 @@ export class Obstacle {
       this.bottomHeight - capHeight
     );
     
-    // Add some texture/details
-    ctx.strokeStyle = '#2E7D32';
+    // Add subtle outline for definition
+    ctx.strokeStyle = '#1B5E20';
     ctx.lineWidth = 2;
     
     // Top pipe outline
@@ -98,6 +112,22 @@ export class Obstacle {
       this.width,
       this.bottomHeight - capHeight
     );
+    
+    // Add inner highlight line on caps for extra 3D effect
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    
+    // Top cap highlight
+    ctx.beginPath();
+    ctx.moveTo(this.x - capOverhang + 4, this.topHeight - capHeight + 4);
+    ctx.lineTo(this.x + this.width + capOverhang - 4, this.topHeight - capHeight + 4);
+    ctx.stroke();
+    
+    // Bottom cap highlight
+    ctx.beginPath();
+    ctx.moveTo(this.x - capOverhang + 4, this.bottomY + 4);
+    ctx.lineTo(this.x + this.width + capOverhang - 4, this.bottomY + 4);
+    ctx.stroke();
   }
   
   /**

@@ -84,6 +84,16 @@ let frameCount = 0;
 
 // Initialize the game
 function init() {
+  // Set controls hint based on device
+  const controlsHint = document.getElementById('controlsHint');
+  if (controlsHint) {
+    if (isMobileDevice()) {
+      controlsHint.innerHTML = '<strong>Tap</strong> to flap';
+    } else {
+      controlsHint.innerHTML = '<strong>Click</strong> or press <strong>SPACE</strong> to flap';
+    }
+  }
+  
   // Check if phrase parameter exists
   if (!encodedPhrase) {
     alert('No puzzle found! Please use a valid link from the sender page.');
@@ -349,14 +359,11 @@ function update() {
   // Update player (Flappy Bird style - vertical only)
   player.update(canvas.height);
   
-  // Spawn obstacles
+  // Spawn obstacles (collectibles are spawned in gaps when obstacles spawn)
   spawnObstacles();
   
   // Update obstacles
   updateObstacles();
-  
-  // Spawn collectibles
-  spawnCollectibles();
   
   // Update collectibles
   updateCollectibles();
@@ -398,6 +405,11 @@ function spawnSingleObstacle() {
   // apply global scroll speed
   obstacle.scrollSpeed = SCROLL_SPEED;
   obstacles.push(obstacle);
+  
+  // Spawn a collectible in this obstacle's gap if there are pieces left
+  if (piecesToSpawn.length > 0) {
+    spawnCollectibleInGap(obstacle);
+  }
 }
 
 // Update obstacles
@@ -415,51 +427,41 @@ function updateObstacles() {
   obstacles = obstacles.filter(o => !o.isOffScreen());
 }
 
-// Spawn collectibles
-function spawnCollectibles() {
-  // Spawn collectibles periodically (less frequently than obstacles)
-  // Place them in safe zones between obstacles (inside obstacle gaps when possible)
-  if (piecesToSpawn.length > 0 && frameCount % COLLECTIBLE_SPAWN_FRAMES === 0) {
-    // Skip any indices that were already collected
-    while (piecesToSpawn.length > 0 && puzzle.collectedPieces[piecesToSpawn[0]]) {
-      piecesToSpawn.shift();
-    }
-    if (piecesToSpawn.length === 0) return;
-
-    const nextIndex = piecesToSpawn.shift();
-    const piece = puzzle.getPiece(nextIndex);
-    if (piece == null) return;
-
-    const spawnX = canvas.width + 100;
-    let spawnY;
-
-    // Prefer spawning inside the gap of a recent obstacle so letter is reachable
-    if (obstacles.length > 0) {
-      const lastObs = obstacles[obstacles.length - 1];
-      const gap = lastObs.getGapBounds();
-      // Place collectible somewhere inside the gap (with small padding)
-      const padding = 12;
-      const availableHeight = Math.max(0, gap.height - padding * 2);
-      spawnY = gap.y + padding + Math.random() * availableHeight;
-    } else {
-      // Fallback safe vertical range when no obstacles exist
-      const safeTop = MIN_GAP_Y;
-      const safeBottom = canvas.height - MIN_GAP_Y - 40; // account for collectible height
-      spawnY = safeTop + Math.random() * Math.max(0, safeBottom - safeTop);
-    }
-
-    // Clamp to canvas bounds
-    spawnY = Math.max(10, Math.min(canvas.height - 50, spawnY));
-
-    const collectible = new Collectible(spawnX, spawnY, nextIndex, piece);
-    // apply mobile-friendly adjustments
-    collectible.scrollSpeed = SCROLL_SPEED;
-    if (isMobileDevice()) {
-      collectible.width = 48;
-      collectible.height = 48;
-    }
-    collectibles.push(collectible);
+// Spawn a collectible attached to a specific obstacle's gap
+function spawnCollectibleInGap(obstacle) {
+  // Skip if no pieces left to spawn
+  if (piecesToSpawn.length === 0) return;
+  
+  // Skip any indices that were already collected
+  while (piecesToSpawn.length > 0 && puzzle.collectedPieces[piecesToSpawn[0]]) {
+    piecesToSpawn.shift();
   }
+  if (piecesToSpawn.length === 0) return;
+
+  const nextIndex = piecesToSpawn.shift();
+  const piece = puzzle.getPiece(nextIndex);
+  if (piece == null) return;
+
+  const gap = obstacle.getGapBounds();
+  // Spawn AFTER the obstacle (to the right of the pipe) so player can collect it while flying through
+  const spawnX = obstacle.x + obstacle.width + 30; // place collectible past the pipe
+  
+  // Place collectible somewhere inside the gap (with small padding)
+  const padding = 12;
+  const availableHeight = Math.max(0, gap.height - padding * 2);
+  let spawnY = gap.y + padding + Math.random() * availableHeight;
+
+  // Clamp to canvas bounds
+  spawnY = Math.max(10, Math.min(canvas.height - 50, spawnY));
+
+  const collectible = new Collectible(spawnX, spawnY, nextIndex, piece);
+  // apply mobile-friendly adjustments
+  collectible.scrollSpeed = SCROLL_SPEED;
+  if (isMobileDevice()) {
+    collectible.width = 48;
+    collectible.height = 48;
+  }
+  collectibles.push(collectible);
 }
 
 // Update all collectibles
