@@ -8,6 +8,7 @@ import { Obstacle } from './obstacle.js';
 // Get URL parameters
 const urlParams = new URLSearchParams(window.location.search);
 const encodedPhrase = urlParams.get('p');
+const playerEmoji = urlParams.get('e') || '🐦';
 
 // DOM elements
 const canvas = document.getElementById('gameCanvas');
@@ -27,6 +28,10 @@ const guessInput = document.getElementById('guessInput');
 const submitGuessBtn = document.getElementById('submitGuessBtn');
 const cancelGuessBtn = document.getElementById('cancelGuessBtn');
 const guessError = document.getElementById('guessError');
+const confettiCanvas = document.getElementById('confettiCanvas');
+const confettiCtx = confettiCanvas.getContext('2d');
+const shareTwitterBtn = document.getElementById('shareTwitter');
+const shareWhatsAppBtn = document.getElementById('shareWhatsApp');
 
 // Game state
 let puzzle = null;
@@ -48,10 +53,14 @@ let GAP_SIZE = 200; // Size of gap in obstacles
 let MIN_GAP_Y = 150; // Minimum gap center Y
 let SCROLL_SPEED = 3; // Default horizontal movement speed for obstacles/collectibles
 let PLAYER_GRAVITY = 0.6;
-let PLAYER_FLAP = -10;
+let PLAYER_FLAP = -8;
 let COLLECTIBLE_SPAWN_FRAMES = 120; // How often to attempt collectible spawn (in frames)
 
 let lastObstacleX = 0; // Track last obstacle X position
+
+// Logical canvas dimensions (for game logic, separate from DPR-scaled physical pixels)
+let canvasWidth = window.innerWidth;
+let canvasHeight = window.innerHeight;
 
 // Simple mobile detection (touch + small screen OR userAgent)
 function isMobileDevice() {
@@ -74,7 +83,7 @@ if (isMobileDevice()) {
   MIN_GAP_Y = 120;
   SCROLL_SPEED = 2.2; // slower for easier timing on touch
   PLAYER_GRAVITY = 0.45; // softer gravity for easier control
-  PLAYER_FLAP = -12; // stronger flap
+  PLAYER_FLAP = -9.5; // adjusted flap strength
   COLLECTIBLE_SPAWN_FRAMES = 90; // spawn collectibles slightly more often
 }
 
@@ -198,15 +207,29 @@ function setupInput() {
   });
 }
 
-// Resize canvas to fill window
+// Resize canvas to fill window with high DPI support
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  
+  const dpr = window.devicePixelRatio || 1;
+  canvasWidth = window.innerWidth;
+  canvasHeight = window.innerHeight;
+
+  canvas.width = canvasWidth * dpr;
+  canvas.height = canvasHeight * dpr;
+  canvas.style.width = canvasWidth + 'px';
+  canvas.style.height = canvasHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Also resize confetti canvas
+  confettiCanvas.width = canvasWidth * dpr;
+  confettiCanvas.height = canvasHeight * dpr;
+  confettiCanvas.style.width = canvasWidth + 'px';
+  confettiCanvas.style.height = canvasHeight + 'px';
+  confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   if (world) {
-    world.resize(canvas.width, canvas.height);
+    world.resize(canvasWidth, canvasHeight);
   }
-  
+
   if (!gameStarted && puzzle) {
     drawInitialScreen();
   }
@@ -215,23 +238,23 @@ function resizeCanvas() {
 // Draw initial screen before game starts
 function drawInitialScreen() {
   ctx.fillStyle = '#87ceeb';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   
   // Draw title text
   ctx.fillStyle = '#333';
   ctx.font = 'bold 48px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('Flappy Puzzle', canvas.width / 2, canvas.height / 2 - 100);
+  ctx.fillText('Flappy Puzzle', canvasWidth / 2, canvasHeight / 2 - 100);
   
   // Draw phrase info
   ctx.font = '24px Arial';
   ctx.fillText(`Collect ${puzzle.getNonSpaceCount()} letters to reveal the phrase!`, 
-               canvas.width / 2, canvas.height / 2 - 40);
+               canvasWidth / 2, canvasHeight / 2 - 40);
   
   ctx.font = '20px Arial';
   ctx.fillStyle = '#666';
   ctx.fillText('Click or press SPACE to start', 
-               canvas.width / 2, canvas.height / 2 + 20);
+               canvasWidth / 2, canvasHeight / 2 + 20);
 }
 
 // Update HUD display
@@ -247,8 +270,8 @@ function startGame() {
   instructions.classList.add('hidden');
   
   // Create game objects
-  world = new World(canvas.width, canvas.height);
-  player = new Player(PLAYER_X, canvas.height / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP });
+  world = new World(canvasWidth, canvasHeight);
+  player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji });
   
   // Initialize pieces to spawn - only one index per distinct non-space character
   piecesToSpawn = puzzle.getUniqueNonSpaceIndices().slice();
@@ -259,7 +282,7 @@ function startGame() {
   obstacles = [];
   score = 0;
   frameCount = 0;
-  lastObstacleX = canvas.width; // Start with first obstacle off screen
+  lastObstacleX = canvasWidth; // Start with first obstacle off screen
   
   // Start game loop
   gameLoop();
@@ -357,7 +380,7 @@ function update() {
   world.update();
   
   // Update player (Flappy Bird style - vertical only)
-  player.update(canvas.height);
+  player.update(canvasHeight);
   
   // Spawn obstacles (collectibles are spawned in gaps when obstacles spawn)
   spawnObstacles();
@@ -390,7 +413,7 @@ function spawnObstacles() {
     const lastObstacle = obstacles[obstacles.length - 1];
     
     // Check if last obstacle is far enough to spawn next one
-    if (lastObstacle.x < canvas.width - OBSTACLE_SPAWN_DISTANCE) {
+    if (lastObstacle.x < canvasWidth - OBSTACLE_SPAWN_DISTANCE) {
       spawnSingleObstacle();
     }
   }
@@ -398,10 +421,10 @@ function spawnObstacles() {
 
 // Spawn a single obstacle
 function spawnSingleObstacle() {
-  const maxGapY = canvas.height - MIN_GAP_Y - 50;
+  const maxGapY = canvasHeight - MIN_GAP_Y - 50;
   const gapY = MIN_GAP_Y + Math.random() * (maxGapY - MIN_GAP_Y);
   
-  const obstacle = new Obstacle(canvas.width + 50, canvas.height, gapY, GAP_SIZE);
+  const obstacle = new Obstacle(canvasWidth + 50, canvasHeight, gapY, GAP_SIZE);
   // apply global scroll speed
   obstacle.scrollSpeed = SCROLL_SPEED;
   obstacles.push(obstacle);
@@ -452,7 +475,7 @@ function spawnCollectibleInGap(obstacle) {
   let spawnY = gap.y + padding + Math.random() * availableHeight;
 
   // Clamp to canvas bounds
-  spawnY = Math.max(10, Math.min(canvas.height - 50, spawnY));
+  spawnY = Math.max(10, Math.min(canvasHeight - 50, spawnY));
 
   const collectible = new Collectible(spawnX, spawnY, nextIndex, piece);
   // apply mobile-friendly adjustments
@@ -499,7 +522,7 @@ function checkCollisions() {
   }
 
   // Check if player went out of bounds
-  if (player.isOutOfBounds(canvas.height)) {
+  if (player.isOutOfBounds(canvasHeight)) {
     triggerGameOver();
     return;
   }
@@ -538,33 +561,33 @@ function triggerGameOver() {
 function showGameOverScreen() {
   // Draw semi-transparent overlay
   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   
   // Game over text
   ctx.fillStyle = '#FF6B6B';
   ctx.font = 'bold 60px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 50);
+  ctx.fillText('Game Over!', canvasWidth / 2, canvasHeight / 2 - 50);
   
   // Instructions
   ctx.fillStyle = '#FFF';
   ctx.font = '28px Arial';
-  ctx.fillText('Click or press SPACE to retry', canvas.width / 2, canvas.height / 2 + 30);
+  ctx.fillText('Click or press SPACE to retry', canvasWidth / 2, canvasHeight / 2 + 30);
   
   // Progress
   ctx.font = '20px Arial';
   ctx.fillStyle = '#FFD93D';
   ctx.fillText(
     `Collected: ${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`,
-    canvas.width / 2,
-    canvas.height / 2 + 80
+    canvasWidth / 2,
+    canvasHeight / 2 + 80
   );
 
   // Show fail counter on game over if greater than zero
   if (failCount > 0) {
     ctx.font = '18px Arial';
     ctx.fillStyle = '#FFD93D';
-    ctx.fillText(`Fails: ${failCount}`, canvas.width / 2, canvas.height / 2 + 120);
+    ctx.fillText(`Fails: ${failCount}`, canvasWidth / 2, canvasHeight / 2 + 120);
   }
 }
 
@@ -606,7 +629,7 @@ function playCollectSound() {
 // Draw everything
 function draw() {
   // Clear canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   
   // Draw world (background)
   world.draw(ctx);
@@ -626,6 +649,74 @@ function draw() {
   }
 }
 
+// Confetti system
+let confettiParticles = [];
+let confettiAnimationId = null;
+
+const CONFETTI_COLORS = ['#5B9BD5', '#7EC8E3', '#4A90D9', '#E8F4FD', '#48bb78', '#FFD93D', '#FF6B6B', '#A8D8EA'];
+
+function createConfetti() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  confettiParticles = [];
+
+  for (let i = 0; i < 150; i++) {
+    confettiParticles.push({
+      x: Math.random() * width,
+      y: Math.random() * height - height,
+      width: Math.random() * 10 + 5,
+      height: Math.random() * 6 + 3,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.2,
+      velocityX: (Math.random() - 0.5) * 3,
+      velocityY: Math.random() * 3 + 2,
+      gravity: 0.1
+    });
+  }
+}
+
+function updateConfetti() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  confettiCtx.clearRect(0, 0, width, height);
+
+  let activeParticles = 0;
+
+  confettiParticles.forEach(p => {
+    p.velocityY += p.gravity;
+    p.x += p.velocityX;
+    p.y += p.velocityY;
+    p.rotation += p.rotationSpeed;
+
+    if (p.y < height + 50) {
+      activeParticles++;
+
+      confettiCtx.save();
+      confettiCtx.translate(p.x, p.y);
+      confettiCtx.rotate(p.rotation);
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(-p.width / 2, -p.height / 2, p.width, p.height);
+      confettiCtx.restore();
+    }
+  });
+
+  if (activeParticles > 0) {
+    confettiAnimationId = requestAnimationFrame(updateConfetti);
+  } else {
+    confettiCtx.clearRect(0, 0, width, height);
+  }
+}
+
+function startConfetti() {
+  if (confettiAnimationId) {
+    cancelAnimationFrame(confettiAnimationId);
+  }
+  createConfetti();
+  updateConfetti();
+}
+
 // Show victory screen
 function showVictory() {
   victoryScreen.classList.remove('hidden');
@@ -637,6 +728,8 @@ function showVictory() {
   } else if (failCountDisplay) {
     failCountDisplay.classList.add('hidden');
   }
+  // Start confetti celebration
+  startConfetti();
 }
 
 // Event listeners
@@ -644,6 +737,20 @@ startBtn.addEventListener('click', startGame);
 
 playAgainBtn.addEventListener('click', () => {
   window.location.href = 'sender.html';
+});
+
+// Share button handlers
+shareTwitterBtn.addEventListener('click', () => {
+  const text = `I just solved a Puzzle Runner challenge! 🎉 Can you figure out the secret phrase?`;
+  const url = window.location.href;
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  window.open(twitterUrl, '_blank', 'width=550,height=420');
+});
+
+shareWhatsAppBtn.addEventListener('click', () => {
+  const text = `I just solved a Puzzle Runner challenge! 🎉 Can you figure out the secret phrase?\n${window.location.href}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(whatsappUrl, '_blank');
 });
 
 // Initialize when page loads

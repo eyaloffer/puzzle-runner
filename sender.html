@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Puzzle Runner - Create Challenge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Secular+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/sender.css">
 </head>
 <body>
@@ -13,14 +16,32 @@
     
     <div class="form-section">
       <label for="phraseInput">Enter a word or phrase:</label>
-      <input 
-        type="text" 
-        id="phraseInput" 
-        placeholder="e.g., Hello World!" 
+      <input
+        type="text"
+        id="phraseInput"
+        placeholder="e.g., Hello World!"
         maxlength="200"
         autofocus
       />
-      
+
+      <div class="emoji-section">
+        <label>Choose your character:</label>
+        <div class="emoji-grid" id="emojiGrid">
+          <button type="button" class="emoji-option selected" data-emoji="🐦">🐦</button>
+          <button type="button" class="emoji-option" data-emoji="🦋">🦋</button>
+          <button type="button" class="emoji-option" data-emoji="🐝">🐝</button>
+          <button type="button" class="emoji-option" data-emoji="🚀">🚀</button>
+          <button type="button" class="emoji-option" data-emoji="🎈">🎈</button>
+          <button type="button" class="emoji-option" data-emoji="⭐">⭐</button>
+          <button type="button" class="emoji-option" data-emoji="🍀">🍀</button>
+          <button type="button" class="emoji-option" data-emoji="❤️">❤️</button>
+        </div>
+        <div class="emoji-custom-wrapper">
+          <span>or type any emoji:</span>
+          <input type="text" id="customEmojiInput" maxlength="2" placeholder="🎮">
+        </div>
+      </div>
+
       <button id="generateBtn" class="btn-primary">Generate Link</button>
     </div>
     
