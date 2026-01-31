@@ -3,7 +3,7 @@
  */
 
 export class Player {
-  constructor(x, y) {
+  constructor(x, y, opts = {}) {
     // Fixed X position (center-left of screen)
     this.x = x;
     this.y = y;
@@ -11,8 +11,8 @@ export class Player {
     this.width = 40;
     this.height = 40; // Made square for Flappy Bird style
     this.velocityY = 0;
-    this.gravity = 0.6;
-    this.flapStrength = -10; // Upward impulse on jump/flap
+    this.gravity = typeof opts.gravity === 'number' ? opts.gravity : 0.6;
+    this.flapStrength = typeof opts.flapStrength === 'number' ? opts.flapStrength : -10; // Upward impulse on jump/flap
     this.color = '#FFD93D';
     this.rotation = 0; // Visual rotation based on velocity
   }

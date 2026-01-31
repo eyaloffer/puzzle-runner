@@ -31,12 +31,42 @@ let gameOver = false;
 let animationId = null;
 let score = 0;
 
-// Flappy Bird style constants
-const PLAYER_X = 150; // Fixed X position for player
-const OBSTACLE_SPAWN_DISTANCE = 350; // Distance between obstacles (increased for better spacing)
-const GAP_SIZE = 200; // Size of gap in obstacles (increased for easier gameplay)
-const MIN_GAP_Y = 150; // Minimum gap center Y
+// Flappy Bird style constants (values may be overridden for mobile)
+let PLAYER_X = 150; // Fixed X position for player
+let OBSTACLE_SPAWN_DISTANCE = 350; // Distance between obstacles (in pixels)
+let GAP_SIZE = 200; // Size of gap in obstacles
+let MIN_GAP_Y = 150; // Minimum gap center Y
+let SCROLL_SPEED = 3; // Default horizontal movement speed for obstacles/collectibles
+let PLAYER_GRAVITY = 0.6;
+let PLAYER_FLAP = -10;
+let COLLECTIBLE_SPAWN_FRAMES = 120; // How often to attempt collectible spawn (in frames)
+
 let lastObstacleX = 0; // Track last obstacle X position
+
+// Simple mobile detection (touch + small screen OR userAgent)
+function isMobileDevice() {
+  try {
+    const ua = navigator.userAgent || '';
+    const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    const smallScreen = window.innerWidth <= 800;
+    const uaMobile = /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
+    return (touch && smallScreen) || uaMobile;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Apply mobile-friendly overrides
+if (isMobileDevice()) {
+  PLAYER_X = 120;
+  OBSTACLE_SPAWN_DISTANCE = 420;
+  GAP_SIZE = 260;
+  MIN_GAP_Y = 120;
+  SCROLL_SPEED = 2.2; // slower for easier timing on touch
+  PLAYER_GRAVITY = 0.45; // softer gravity for easier control
+  PLAYER_FLAP = -12; // stronger flap
+  COLLECTIBLE_SPAWN_FRAMES = 90; // spawn collectibles slightly more often
+}
 
 // Track which pieces need to spawn
 let piecesToSpawn = [];
@@ -160,7 +190,7 @@ function startGame() {
   
   // Create game objects
   world = new World(canvas.width, canvas.height);
-  player = new Player(PLAYER_X, canvas.height / 2);
+  player = new Player(PLAYER_X, canvas.height / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP });
   
   // Initialize pieces to spawn - only non-space pieces
   piecesToSpawn = puzzle.getNonSpaceIndices().slice();
@@ -255,6 +285,8 @@ function spawnSingleObstacle() {
   const gapY = MIN_GAP_Y + Math.random() * (maxGapY - MIN_GAP_Y);
   
   const obstacle = new Obstacle(canvas.width + 50, canvas.height, gapY, GAP_SIZE);
+  // apply global scroll speed
+  obstacle.scrollSpeed = SCROLL_SPEED;
   obstacles.push(obstacle);
 }
 
@@ -277,7 +309,7 @@ function updateObstacles() {
 function spawnCollectibles() {
   // Spawn collectibles periodically (less frequently than obstacles)
   // Place them in safe zones between obstacles
-  if (piecesToSpawn.length > 0 && frameCount % 120 === 0) {
+  if (piecesToSpawn.length > 0 && frameCount % COLLECTIBLE_SPAWN_FRAMES === 0) {
     const nextIndex = piecesToSpawn.shift();
     const piece = puzzle.getPiece(nextIndex);
     
@@ -285,6 +317,12 @@ function spawnCollectibles() {
     const spawnY = 100 + Math.random() * (canvas.height - 200);
     
     const collectible = new Collectible(spawnX, spawnY, nextIndex, piece);
+    // apply mobile-friendly adjustments
+    collectible.scrollSpeed = SCROLL_SPEED;
+    if (isMobileDevice()) {
+      collectible.width = 48;
+      collectible.height = 48;
+    }
     collectibles.push(collectible);
   }
 }
