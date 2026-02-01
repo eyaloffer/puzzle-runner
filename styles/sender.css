@@ -5,7 +5,8 @@
 }
 
 body {
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
+  font-weight: 500;
   background: linear-gradient(135deg, #5B9BD5 0%, #7EC8E3 100%);
   min-height: 100vh;
   display: flex;
@@ -89,7 +90,7 @@ label {
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .btn-primary {
@@ -192,7 +193,7 @@ label {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .share-btn svg {
