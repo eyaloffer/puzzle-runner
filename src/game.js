@@ -4,6 +4,7 @@ import { Player } from './player.js';
 import { World } from './world.js';
 import { Collectible } from './collectible.js';
 import { Obstacle } from './obstacle.js';
+import { ParticleSystem } from './particles.js';
 
 // Get URL parameters
 const urlParams = new URLSearchParams(window.location.search);
@@ -47,6 +48,9 @@ let gamePaused = false;
 let animationId = null;
 let score = 0;
 let failCount = 0;
+
+// Particle system for death effects
+let particleSystem = new ParticleSystem();
 
 // Session timer (persists across retries)
 let sessionStartTime = null;
@@ -274,6 +278,16 @@ function startGame() {
     cancelAnimationFrame(animationId);
     animationId = null;
   }
+
+  // Cancel any ongoing death animation
+  if (deathAnimationId) {
+    cancelAnimationFrame(deathAnimationId);
+    deathAnimationId = null;
+    deathAnimationStart = 0;
+  }
+
+  // Clear particle system
+  particleSystem.clear();
 
   gameStarted = true;
   gameOver = false;
@@ -580,6 +594,12 @@ function checkCollisions() {
       puzzle.collectPiece(collectible.pieceIndex);
       updateHUD();
 
+      // Create sparkle effect at collectible position
+      particleSystem.createCollectSparkles(
+        collectible.x + collectible.width / 2,
+        collectible.y + collectible.height / 2
+      );
+
       // Remove any other on-screen collectibles of same character
       collectibles.forEach(c => {
         if (!c.collected && c.pieceText === collectible.pieceText) {
@@ -610,13 +630,38 @@ function triggerGameOver() {
   failCount++;
   gameOver = true;
   gameStarted = false;
-  
-  // Show game over message
-  showGameOverScreen();
+
+  // Create death particle effects
+  const playerCenterX = player.x + player.width / 2;
+  const playerCenterY = player.y + player.height / 2;
+
+  // Player explosion particles with theme colors
+  const deathColors = ['#5B9BD5', '#7EC8E3', '#FFD93D', '#FF6B6B', '#FFA94D', '#FFFFFF'];
+  particleSystem.createDeathExplosion(playerCenterX, playerCenterY, deathColors);
+
+  // Splash on nearby pipes
+  particleSystem.createPipeSplash(obstacles, playerCenterX, playerCenterY, deathColors);
+
+  // Screen shake - more intense
+  particleSystem.startScreenShake(28, 550);
+
+  // Play crash sound
+  playCrashSound();
+
+  // Start death animation loop (to show particles before game over screen)
+  deathAnimationLoop();
 }
 
 // Show game over screen
 function showGameOverScreen() {
+  // Draw the scene behind the overlay (world, obstacles, remaining particles)
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  world.draw(ctx);
+  obstacles.forEach(obstacle => obstacle.draw(ctx));
+  particleSystem.splashParticles.forEach(p => p.draw(ctx));
+  collectibles.forEach(collectible => collectible.draw(ctx));
+  particleSystem.particles.forEach(p => p.draw(ctx));
+
   // Draw semi-transparent overlay
   ctx.fillStyle = 'rgba(30, 58, 95, 0.85)';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
@@ -653,12 +698,22 @@ function showGameOverScreen() {
 
 // Reset game (on retry after game over)
 function resetGame() {
+  // Cancel any ongoing death animation
+  if (deathAnimationId) {
+    cancelAnimationFrame(deathAnimationId);
+    deathAnimationId = null;
+    deathAnimationStart = 0;
+  }
+
+  // Clear particle system
+  particleSystem.clear();
+
   // Reset puzzle collected state (keep spaces collected)
   puzzle.resetCollected();
-  
+
   // Restart the game
   startGame();
-  
+
   // Update HUD
   updateHUD();
 }
@@ -684,6 +739,73 @@ function playCollectSound() {
   } catch (e) {
     // Audio API not supported, silently fail
   }
+}
+
+// Crash/death sound effect
+function playCrashSound() {
+  try {
+    const audio = new Audio('src/assets/skadoosh.mp3');
+    audio.volume = 0.7;
+    audio.play();
+  } catch (e) {
+    // Audio not supported, silently fail
+  }
+}
+
+// Death animation loop - shows particle effects before game over screen
+let deathAnimationId = null;
+let deathAnimationStart = 0;
+const DEATH_ANIMATION_DURATION = 2000; // ms before showing game over screen
+
+function deathAnimationLoop() {
+  if (deathAnimationStart === 0) {
+    deathAnimationStart = performance.now();
+  }
+
+  const elapsed = performance.now() - deathAnimationStart;
+
+  // Update and draw particles with screen shake
+  drawDeathFrame();
+
+  // Continue until animation duration is complete and particles settle
+  if (elapsed < DEATH_ANIMATION_DURATION || particleSystem.isActive()) {
+    deathAnimationId = requestAnimationFrame(deathAnimationLoop);
+  } else {
+    // Animation complete, show game over screen
+    deathAnimationStart = 0;
+    showGameOverScreen();
+  }
+}
+
+// Draw a single frame during death animation
+function drawDeathFrame() {
+  // Get screen shake offset
+  const shake = particleSystem.getShakeOffset();
+
+  // Clear canvas
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  // Apply screen shake
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+
+  // Draw world (background)
+  world.draw(ctx);
+
+  // Draw obstacles with splash particles
+  obstacles.forEach(obstacle => obstacle.draw(ctx));
+
+  // Draw splash particles on pipes
+  particleSystem.splashParticles.forEach(p => p.draw(ctx));
+
+  // Draw collectibles
+  collectibles.forEach(collectible => collectible.draw(ctx));
+
+  // Update and draw death particles
+  particleSystem.update();
+  particleSystem.particles.forEach(p => p.draw(ctx));
+
+  ctx.restore();
 }
 
 // Victory chime for last letter
@@ -798,6 +920,10 @@ function draw() {
 
   // Draw player
   player.draw(ctx);
+
+  // Update and draw sparkle particles
+  particleSystem.update();
+  particleSystem.sparkleParticles.forEach(p => p.draw(ctx));
 
   // Draw last letter celebration effect
   drawLastLetterEffect();
