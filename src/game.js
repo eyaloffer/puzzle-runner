@@ -124,7 +124,14 @@ function init() {
     // Decode the phrase
     const phrase = decodeFromUrlSafe(encodedPhrase);
     console.log('Decoded phrase:', phrase);
-    
+
+    // Track decoded phrase in analytics (production only)
+    if (typeof gtag !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      gtag('event', 'puzzle_played', {
+        'phrase': phrase
+      });
+    }
+
     // Create puzzle (spaces are auto-collected in the Puzzle constructor)
     puzzle = new Puzzle(phrase);
     console.log('Puzzle pieces:', puzzle.pieces);
@@ -185,7 +192,7 @@ function setupInput() {
   // Mouse/touch input - Click/tap to flap
   canvas.addEventListener('click', () => {
     if (gamePaused) return;
-    
+
     if (!gameStarted) {
       startGame();
     } else if (gameOver) {
