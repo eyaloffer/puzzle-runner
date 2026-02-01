@@ -1,9 +1,9 @@
 /**
- * Obstacle class - Flappy Bird-style pipes/obstacles
+ * Obstacle class - Theme-based obstacles (pipes, spikes, coral, asteroids)
  */
 
 export class Obstacle {
-  constructor(x, canvasHeight, gapY, gapSize = 150) {
+  constructor(x, canvasHeight, gapY, gapSize = 150, theme = null) {
     this.x = x;
     this.canvasHeight = canvasHeight;
     this.gapY = gapY; // Center Y of the gap
@@ -12,7 +12,9 @@ export class Obstacle {
     this.scrollSpeed = 3;
     this.offScreen = false;
     this.passed = false; // Track if player has passed this obstacle
-    
+    this.theme = theme;
+    this.rotation = Math.random() * Math.PI * 2; // For rotating asteroids
+
     // Calculate top and bottom pipe heights
     this.topHeight = gapY - gapSize / 2;
     this.bottomY = gapY + gapSize / 2;
@@ -24,7 +26,12 @@ export class Obstacle {
    */
   update() {
     this.x -= this.scrollSpeed;
-    
+
+    // Rotate asteroids
+    if (this.theme?.obstacles?.rotate) {
+      this.rotation += 0.02;
+    }
+
     // Check if off screen
     if (this.x + this.width < 0) {
       this.offScreen = true;
@@ -36,24 +43,56 @@ export class Obstacle {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw(ctx) {
-    const capHeight = 30;
-    const capOverhang = 5;
+    if (!this.theme) {
+      this.drawPipe(ctx); // Fallback to classic pipes
+      return;
+    }
+
+    const obstacleType = this.theme.obstacles?.type || 'pipe';
+
+    switch (obstacleType) {
+      case 'spike':
+        this.drawSpike(ctx);
+        break;
+      case 'coral':
+        this.drawCoral(ctx);
+        break;
+      case 'asteroid':
+        this.drawAsteroid(ctx);
+        break;
+      case 'pipe':
+      default:
+        this.drawPipe(ctx);
+        break;
+    }
+  }
+
+  /**
+   * Draw classic pipe obstacles
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  drawPipe(ctx) {
+    const capHeight = this.theme?.obstacles?.capHeight || 30;
+    const capOverhang = this.theme?.obstacles?.capOverhang || 5;
+    const colors = this.theme?.obstacles?.colors || ['#2E7D32', '#4CAF50', '#81C784', '#4CAF50', '#2E7D32'];
+    const capColors = this.theme?.obstacles?.capColors || ['#1B5E20', '#388E3C', '#66BB6A', '#388E3C', '#1B5E20'];
+    const outlineColor = this.theme?.obstacles?.outlineColor || '#1B5E20';
     
     // Create horizontal gradient for 3D pipe effect
     const pipeGradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-    pipeGradient.addColorStop(0, '#2E7D32');    // dark green (left edge - shadow)
-    pipeGradient.addColorStop(0.2, '#4CAF50');  // medium green
-    pipeGradient.addColorStop(0.5, '#81C784');  // light green (center - highlight)
-    pipeGradient.addColorStop(0.8, '#4CAF50');  // medium green
-    pipeGradient.addColorStop(1, '#2E7D32');    // dark green (right edge - shadow)
-    
+    pipeGradient.addColorStop(0, colors[0]);
+    pipeGradient.addColorStop(0.2, colors[1]);
+    pipeGradient.addColorStop(0.5, colors[2]);
+    pipeGradient.addColorStop(0.8, colors[3]);
+    pipeGradient.addColorStop(1, colors[4]);
+
     // Create gradient for caps (slightly darker/more contrast)
     const capGradient = ctx.createLinearGradient(this.x - capOverhang, 0, this.x + this.width + capOverhang, 0);
-    capGradient.addColorStop(0, '#1B5E20');     // darker green (left edge)
-    capGradient.addColorStop(0.15, '#388E3C');  // medium-dark green
-    capGradient.addColorStop(0.5, '#66BB6A');   // lighter green (center highlight)
-    capGradient.addColorStop(0.85, '#388E3C');  // medium-dark green
-    capGradient.addColorStop(1, '#1B5E20');     // darker green (right edge)
+    capGradient.addColorStop(0, capColors[0]);
+    capGradient.addColorStop(0.15, capColors[1]);
+    capGradient.addColorStop(0.5, capColors[2]);
+    capGradient.addColorStop(0.85, capColors[3]);
+    capGradient.addColorStop(1, capColors[4]);
     
     // Top pipe body
     ctx.fillStyle = pipeGradient;
@@ -87,7 +126,7 @@ export class Obstacle {
     );
     
     // Add subtle outline for definition
-    ctx.strokeStyle = '#1B5E20';
+    ctx.strokeStyle = outlineColor;
     ctx.lineWidth = 2;
     
     // Top pipe outline
@@ -182,5 +221,252 @@ export class Obstacle {
       width: this.width,
       height: this.gapSize
     };
+  }
+
+  /**
+   * Draw spike obstacles (Evil theme)
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  drawSpike(ctx) {
+    const colors = this.theme.obstacles.colors;
+    const glowColor = this.theme.obstacles.glowColor;
+    const outlineColor = this.theme.obstacles.outlineColor;
+
+    // Add glow effect
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 15;
+
+    // Draw top spikes (pointing down)
+    this.drawSpikeRow(ctx, 0, this.topHeight, colors, outlineColor, 'down');
+
+    // Draw bottom spikes (pointing up)
+    this.drawSpikeRow(ctx, this.bottomY, this.canvasHeight, colors, outlineColor, 'up');
+
+    ctx.shadowBlur = 0;
+  }
+
+  /**
+   * Draw a row of spikes
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} startY
+   * @param {number} endY
+   * @param {Array} colors
+   * @param {string} outlineColor
+   * @param {string} direction - 'up' or 'down'
+   */
+  drawSpikeRow(ctx, startY, endY, colors, outlineColor, direction) {
+    const spikeWidth = 30;
+    const spikeHeight = 40;
+    const numSpikes = Math.ceil((endY - startY) / spikeHeight);
+
+    const gradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+    gradient.addColorStop(0, colors[0]);
+    gradient.addColorStop(0.5, colors[2]);
+    gradient.addColorStop(1, colors[4]);
+
+    for (let i = 0; i < numSpikes; i++) {
+      const y = startY + i * spikeHeight;
+      const centerX = this.x + this.width / 2;
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+
+      if (direction === 'down') {
+        // Triangle pointing down
+        ctx.moveTo(this.x, y);
+        ctx.lineTo(this.x + this.width, y);
+        ctx.lineTo(centerX, y + spikeHeight);
+      } else {
+        // Triangle pointing up
+        ctx.moveTo(centerX, y);
+        ctx.lineTo(this.x, y + spikeHeight);
+        ctx.lineTo(this.x + this.width, y + spikeHeight);
+      }
+
+      ctx.closePath();
+      ctx.fill();
+
+      // Outline
+      ctx.strokeStyle = outlineColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * Draw coral obstacles (Ocean theme)
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  drawCoral(ctx) {
+    const colors = this.theme.obstacles.colors;
+    const secondaryColors = this.theme.obstacles.secondaryColors;
+    const outlineColor = this.theme.obstacles.outlineColor;
+
+    // Draw wavy coral stalks
+    this.drawWavyCoral(ctx, 0, this.topHeight, colors, outlineColor);
+    this.drawWavyCoral(ctx, this.bottomY, this.canvasHeight, secondaryColors, outlineColor);
+  }
+
+  /**
+   * Draw wavy coral stalk
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} startY
+   * @param {number} endY
+   * @param {Array} colors
+   * @param {string} outlineColor
+   */
+  drawWavyCoral(ctx, startY, endY, colors, outlineColor) {
+    const gradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+    gradient.addColorStop(0, colors[0]);
+    gradient.addColorStop(0.25, colors[1]);
+    gradient.addColorStop(0.5, colors[2]);
+    gradient.addColorStop(0.75, colors[3]);
+    gradient.addColorStop(1, colors[4]);
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+
+    // Create wavy path
+    const segments = 20;
+    const height = endY - startY;
+    const waveAmplitude = 8;
+
+    ctx.moveTo(this.x, startY);
+
+    for (let i = 0; i <= segments; i++) {
+      const y = startY + (height / segments) * i;
+      const wave = Math.sin(i * 0.5) * waveAmplitude;
+      ctx.lineTo(this.x + wave, y);
+    }
+
+    for (let i = segments; i >= 0; i--) {
+      const y = startY + (height / segments) * i;
+      const wave = Math.sin(i * 0.5) * waveAmplitude;
+      ctx.lineTo(this.x + this.width + wave, y);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+
+    // Outline
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Add bulbous cap at the gap edge
+    const capRadius = this.width / 2 + 8;
+    const capY = startY === 0 ? endY : startY;
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(this.x + this.width / 2, capY, capRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = outlineColor;
+    ctx.stroke();
+  }
+
+  /**
+   * Draw asteroid obstacles (Space theme)
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  drawAsteroid(ctx) {
+    const colors = this.theme.obstacles.colors;
+    const secondaryColors = this.theme.obstacles.secondaryColors;
+    const outlineColor = this.theme.obstacles.outlineColor;
+    const glowColor = this.theme.obstacles.glowColor;
+
+    // Add subtle glow
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 10;
+
+    // Draw top asteroid
+    this.drawSingleAsteroid(ctx, this.x + this.width / 2, this.topHeight - 30, 35, colors, outlineColor);
+
+    // Draw bottom asteroid
+    this.drawSingleAsteroid(ctx, this.x + this.width / 2, this.bottomY + 30, 35, secondaryColors, outlineColor);
+
+    ctx.shadowBlur = 0;
+  }
+
+  /**
+   * Draw a single rotating asteroid
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} centerX
+   * @param {number} centerY
+   * @param {number} size
+   * @param {Array} colors
+   * @param {string} outlineColor
+   */
+  drawSingleAsteroid(ctx, centerX, centerY, size, colors, outlineColor) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(this.rotation);
+
+    // Create gradient
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+    gradient.addColorStop(0, colors[2]);
+    gradient.addColorStop(0.5, colors[1]);
+    gradient.addColorStop(1, colors[0]);
+
+    // Draw irregular rock shape
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+
+    const points = 8;
+    for (let i = 0; i < points; i++) {
+      const angle = (i / points) * Math.PI * 2;
+      const radius = size + Math.sin(i * 2.5) * 8;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+
+    ctx.closePath();
+    ctx.fill();
+
+    // Outline
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Add crater details
+    ctx.fillStyle = colors[0];
+    ctx.beginPath();
+    ctx.arc(size * 0.3, -size * 0.2, size * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(-size * 0.2, size * 0.3, size * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Draw vertical columns extending from asteroids
+    const columnWidth = this.width;
+    const gradient2 = ctx.createLinearGradient(this.x, 0, this.x + columnWidth, 0);
+    gradient2.addColorStop(0, colors[0]);
+    gradient2.addColorStop(0.5, colors[2]);
+    gradient2.addColorStop(1, colors[0]);
+
+    ctx.fillStyle = gradient2;
+
+    // Top column
+    if (centerY < this.canvasHeight / 2) {
+      ctx.fillRect(this.x, 0, columnWidth, centerY - size);
+      ctx.strokeStyle = outlineColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x, 0, columnWidth, centerY - size);
+    } else {
+      // Bottom column
+      ctx.fillRect(this.x, centerY + size, columnWidth, this.canvasHeight - (centerY + size));
+      ctx.strokeStyle = outlineColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x, centerY + size, columnWidth, this.canvasHeight - (centerY + size));
+    }
   }
 }
