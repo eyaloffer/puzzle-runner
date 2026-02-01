@@ -213,11 +213,17 @@ function setupInput() {
   });
 }
 
-// Resize canvas to fill window with high DPI support
+// Resize canvas to fill available space with high DPI support
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
+
+  // Get the HUD height to calculate available space
+  const hud = document.getElementById('hud');
+  const hudHeight = hud ? hud.offsetHeight : 0;
+
+  // Canvas fills the remaining space below the HUD
   canvasWidth = window.innerWidth;
-  canvasHeight = window.innerHeight;
+  canvasHeight = window.innerHeight - hudHeight;
 
   canvas.width = canvasWidth * dpr;
   canvas.height = canvasHeight * dpr;
@@ -225,11 +231,11 @@ function resizeCanvas() {
   canvas.style.height = canvasHeight + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Also resize confetti canvas
-  confettiCanvas.width = canvasWidth * dpr;
-  confettiCanvas.height = canvasHeight * dpr;
-  confettiCanvas.style.width = canvasWidth + 'px';
-  confettiCanvas.style.height = canvasHeight + 'px';
+  // Confetti canvas covers entire viewport
+  confettiCanvas.width = window.innerWidth * dpr;
+  confettiCanvas.height = window.innerHeight * dpr;
+  confettiCanvas.style.width = window.innerWidth + 'px';
+  confettiCanvas.style.height = window.innerHeight + 'px';
   confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   if (world) {
@@ -567,10 +573,6 @@ function checkCollisions() {
       // Collect all identical characters in the puzzle
       puzzle.collectPiece(collectible.pieceIndex);
       updateHUD();
-      playCollectSound();
-
-      // Trigger visual effect on player
-      player.triggerCollectEffect();
 
       // Remove any other on-screen collectibles of same character
       collectibles.forEach(c => {
@@ -578,6 +580,20 @@ function checkCollisions() {
           c.collected = true;
         }
       });
+
+      // Check if this was the last letter needed
+      const isLastLetter = puzzle.isComplete();
+
+      if (isLastLetter) {
+        // Special effect for last letter
+        playVictoryChime();
+        triggerLastLetterEffect();
+      } else {
+        playCollectSound();
+      }
+
+      // Trigger visual effect on player
+      player.triggerCollectEffect();
     }
   });
 }
@@ -647,16 +663,16 @@ function playCollectSound() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
+
     oscillator.frequency.value = 800;
     oscillator.type = 'sine';
-    
+
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-    
+
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.2);
   } catch (e) {
@@ -664,23 +680,122 @@ function playCollectSound() {
   }
 }
 
+// Victory chime for last letter
+function playVictoryChime() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 - triumphant arpeggio
+
+    notes.forEach((freq, i) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+
+      const startTime = audioContext.currentTime + i * 0.08;
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.4);
+    });
+  } catch (e) {
+    // Audio API not supported, silently fail
+  }
+}
+
+// Last letter special visual effect
+let lastLetterEffectActive = false;
+let lastLetterEffectStart = 0;
+
+function triggerLastLetterEffect() {
+  lastLetterEffectActive = true;
+  lastLetterEffectStart = performance.now();
+
+  // Haptic feedback on mobile
+  if (navigator.vibrate) {
+    navigator.vibrate([100, 50, 100, 50, 200]);
+  }
+}
+
+function drawLastLetterEffect() {
+  if (!lastLetterEffectActive) return;
+
+  const elapsed = performance.now() - lastLetterEffectStart;
+  const duration = 600;
+
+  if (elapsed > duration) {
+    lastLetterEffectActive = false;
+    return;
+  }
+
+  const progress = elapsed / duration;
+
+  // Screen flash effect (white to transparent)
+  const flashOpacity = Math.max(0, 0.6 * (1 - progress * 2));
+  if (flashOpacity > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  }
+
+  // Expanding rings effect from center
+  const ringCount = 3;
+  for (let i = 0; i < ringCount; i++) {
+    const ringProgress = Math.min(1, (progress * 2) - (i * 0.15));
+    if (ringProgress > 0 && ringProgress < 1) {
+      const radius = ringProgress * Math.max(canvasWidth, canvasHeight) * 0.8;
+      const ringOpacity = (1 - ringProgress) * 0.4;
+
+      ctx.beginPath();
+      ctx.arc(canvasWidth / 2, canvasHeight / 2, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(126, 200, 227, ${ringOpacity})`;
+      ctx.lineWidth = 8 * (1 - ringProgress);
+      ctx.stroke();
+    }
+  }
+
+  // Golden sparkle particles
+  const sparkleCount = 12;
+  for (let i = 0; i < sparkleCount; i++) {
+    const angle = (i / sparkleCount) * Math.PI * 2;
+    const dist = progress * 200 + 50;
+    const x = canvasWidth / 2 + Math.cos(angle) * dist;
+    const y = canvasHeight / 2 + Math.sin(angle) * dist;
+    const size = 6 * (1 - progress);
+    const opacity = 1 - progress;
+
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 215, 0, ${opacity})`;
+    ctx.fill();
+  }
+}
+
 // Draw everything
 function draw() {
   // Clear canvas
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  
+
   // Draw world (background)
   world.draw(ctx);
-  
+
   // Draw obstacles
   obstacles.forEach(obstacle => obstacle.draw(ctx));
-  
+
   // Draw collectibles
   collectibles.forEach(collectible => collectible.draw(ctx));
-  
+
   // Draw player
   player.draw(ctx);
-  
+
+  // Draw last letter celebration effect
+  drawLastLetterEffect();
+
   // Draw game over overlay if needed
   if (gameOver) {
     showGameOverScreen();
@@ -763,13 +878,16 @@ function showVictory() {
   victoryScreen.classList.remove('hidden');
   solvedPhrase.textContent = puzzle.originalPhrase;
 
-  // Show completion stats (time and fails)
+  // Show completion stats (time and fails on separate lines)
   if (completionStats) {
     const timeStr = formatTime(completionTime, true);
-    const failsText = failCount === 0
-      ? '<span class="flawless">FLAWLESS!</span>'
-      : `${failCount} fail${failCount > 1 ? 's' : ''}`;
-    completionStats.innerHTML = `<span class="time">${timeStr}</span> · ${failsText}`;
+    const failsHtml = failCount === 0
+      ? '<span class="flawless">Flawless!</span>'
+      : `<span class="fails">${failCount}</span> fail${failCount > 1 ? 's' : ''}`;
+    completionStats.innerHTML = `
+      <div class="stat-row"><span class="stat-label">Time:</span> <span class="time">${timeStr}</span></div>
+      <div class="stat-row"><span class="stat-label">Attempts:</span> ${failsHtml}</div>
+    `;
   }
 
   // Start confetti celebration
@@ -788,7 +906,7 @@ playAgainBtn.addEventListener('click', () => {
 function getShareText() {
   const timeStr = formatTime(completionTime, true);
   const failsText = failCount === 0 ? 'FLAWLESS' : `${failCount} fail${failCount > 1 ? 's' : ''}`;
-  return `I solved this Puzzle Runner in ${timeStr} (${failsText})! 🎉 Can you beat my time?`;
+  return `I solved this Birdle in ${timeStr} (${failsText})! Can you beat my time?`;
 }
 
 shareTwitterBtn.addEventListener('click', () => {

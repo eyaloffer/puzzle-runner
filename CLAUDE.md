@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Puzzle Runner is a Flappy Bird-style endless runner puzzle game where players navigate through pipe obstacles while collecting letters to reveal a hidden phrase. The game is shareable via URL-encoded puzzle links.
+Birdle is a Flappy Bird-style word puzzle game where players navigate through pipe obstacles while collecting letters to reveal a hidden phrase. The game is shareable via URL-encoded puzzle links.
 
 ## Commands
 

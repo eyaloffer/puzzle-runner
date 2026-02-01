@@ -1,7 +1,7 @@
-# Puzzle Runner - Flappy Bird Edition
+# Birdle
 
 ## Game Overview
-A Flappy Bird-style game where players navigate through obstacles while collecting letters to reveal a hidden phrase.
+A Flappy Bird-style word puzzle game where players navigate through obstacles while collecting letters to reveal a hidden phrase.
 
 ## Recent Refactoring: Platformer → Flappy Bird
 

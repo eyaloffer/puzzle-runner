@@ -23,15 +23,14 @@ input, button, textarea, select {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* HUD styling */
 .hud {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: rgba(30, 58, 95, 0.9);
+  position: relative;
+  flex-shrink: 0;
+  background: rgba(30, 58, 95, 0.95);
   color: white;
   padding: 15px 24px;
   z-index: 100;
@@ -40,6 +39,7 @@ input, button, textarea, select {
   align-items: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .collected-pieces {
@@ -240,8 +240,9 @@ input, button, textarea, select {
 #gameCanvas {
   display: block;
   background: #87ceeb;
+  flex: 1;
   width: 100%;
-  height: 100%;
+  min-height: 0;
 }
 
 /* Victory screen */
@@ -277,14 +278,16 @@ input, button, textarea, select {
   font-size: 3em;
   margin-bottom: 30px;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 0.15em;
+  flex-wrap: nowrap;
+  line-height: 1.2;
 }
 
 .victory-title .title-text {
   display: inline-flex;
+  align-items: baseline;
 }
 
 .victory-title .title-text span {
@@ -308,7 +311,10 @@ input, button, textarea, select {
 
 .victory-title .emoji-bounce {
   display: inline-block;
-  font-size: 1em;
+  font-size: 0.85em;
+  vertical-align: baseline;
+  position: relative;
+  top: -0.05em;
   animation: emojiBounce 0.6s ease-out var(--delay, 0s) both,
              emojiFloat 2s ease-in-out infinite 0.6s;
   filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
@@ -351,21 +357,44 @@ input, button, textarea, select {
 }
 
 .completion-stats {
-  font-size: 1.2em;
+  font-size: 1.1em;
   color: #7EC8E3;
   margin-bottom: 24px;
   animation: buttonFadeIn 0.6s ease-out 0.4s both;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.completion-stats .stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completion-stats .stat-label {
+  color: #a0aec0;
+  font-size: 0.9em;
 }
 
 .completion-stats .time {
   font-family: 'Courier New', Courier, monospace;
   font-weight: bold;
   color: #FFD93D;
+  font-size: 1.3em;
+}
+
+.completion-stats .fails {
+  color: #fc8181;
+  font-weight: bold;
 }
 
 .completion-stats .flawless {
   color: #48bb78;
   font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 /* Instructions overlay */
@@ -660,7 +689,7 @@ input, button, textarea, select {
   .victory-content h1.victory-title {
     font-size: 1.8em;
     margin-bottom: 24px;
-    gap: 8px;
+    gap: 0.12em;
   }
 
   .solved-phrase {
@@ -766,7 +795,7 @@ input, button, textarea, select {
 
   .victory-content h1.victory-title {
     font-size: 1.5em;
-    gap: 6px;
+    gap: 0.1em;
   }
 
   .solved-phrase {

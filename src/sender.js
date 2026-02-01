@@ -9,9 +9,17 @@ const copyBtn = document.getElementById('copyBtn');
 const copySuccess = document.getElementById('copySuccess');
 const emojiGrid = document.getElementById('emojiGrid');
 const customEmojiInput = document.getElementById('customEmojiInput');
+const errorMessage = document.getElementById('errorMessage');
+const shareTwitterBtn = document.getElementById('shareTwitterBtn');
+const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
+
+// Validation constants
+const MIN_PHRASE_LENGTH = 2;
+const MAX_PHRASE_LENGTH = 100;
 
 // Track selected emoji
 let selectedEmoji = '🐦';
+let currentGameUrl = '';
 
 // Handle emoji grid selection
 emojiGrid.addEventListener('click', (e) => {
@@ -45,27 +53,80 @@ customEmojiInput.addEventListener('focus', () => {
   }
 });
 
+// Validate phrase input
+function validatePhrase(phrase) {
+  if (!phrase) {
+    return 'Please enter a word or phrase';
+  }
+
+  if (phrase.length < MIN_PHRASE_LENGTH) {
+    return `Phrase must be at least ${MIN_PHRASE_LENGTH} characters`;
+  }
+
+  if (phrase.length > MAX_PHRASE_LENGTH) {
+    return `Phrase must be ${MAX_PHRASE_LENGTH} characters or less`;
+  }
+
+  // Check for at least one letter or number (not just spaces/punctuation)
+  if (!/[\p{L}\p{N}]/u.test(phrase)) {
+    return 'Phrase must contain at least one letter or number';
+  }
+
+  return null; // No error
+}
+
+// Validate emoji input
+function validateEmoji(emoji) {
+  if (!emoji) {
+    return 'Please select or enter a character';
+  }
+  return null;
+}
+
+// Show error message
+function showError(message) {
+  errorMessage.textContent = message;
+  errorMessage.classList.remove('hidden');
+}
+
+// Hide error message
+function hideError() {
+  errorMessage.classList.add('hidden');
+}
+
 // Generate link when button is clicked
 generateBtn.addEventListener('click', () => {
   const phrase = phraseInput.value.trim();
 
-  if (!phrase) {
-    alert('Please enter a word or phrase first!');
+  // Validate phrase
+  const phraseError = validatePhrase(phrase);
+  if (phraseError) {
+    showError(phraseError);
     return;
   }
 
   // Use custom emoji if entered
   const emoji = customEmojiInput.value ? [...customEmojiInput.value][0] : selectedEmoji;
 
+  // Validate emoji
+  const emojiError = validateEmoji(emoji);
+  if (emojiError) {
+    showError(emojiError);
+    return;
+  }
+
+  // Hide any previous error
+  hideError();
+
   // Encode the phrase
   const encoded = encodeToUrlSafe(phrase);
 
   // Create the game URL with emoji parameter
   const baseUrl = window.location.origin + window.location.pathname.replace('sender.html', '');
-  const gameUrl = `${baseUrl}game.html?p=${encoded}&e=${encodeURIComponent(emoji)}`;
+  currentGameUrl = `${baseUrl}game.html?p=${encoded}&e=${encodeURIComponent(emoji)}`;
 
   // Display the link
-  generatedLink.value = gameUrl;
+  generatedLink.value = currentGameUrl;
   linkSection.classList.remove('hidden');
 
   // Hide success message if it was showing
@@ -101,4 +162,22 @@ phraseInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     generateBtn.click();
   }
+});
+
+// Clear error on input
+phraseInput.addEventListener('input', hideError);
+
+// Share button handlers
+shareTwitterBtn.addEventListener('click', () => {
+  if (!currentGameUrl) return;
+  const text = "I created a Birdle for you! Can you solve my secret phrase?";
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(currentGameUrl)}`;
+  window.open(twitterUrl, '_blank', 'width=550,height=420');
+});
+
+shareWhatsAppBtn.addEventListener('click', () => {
+  if (!currentGameUrl) return;
+  const text = `I created a Birdle for you! Can you solve my secret phrase?\n${currentGameUrl}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(whatsappUrl, '_blank');
 });
