@@ -185,7 +185,7 @@ function setupInput() {
   // Mouse/touch input - Click/tap to flap
   canvas.addEventListener('click', () => {
     if (gamePaused) return;
-    
+
     if (!gameStarted) {
       startGame();
     } else if (gameOver) {
