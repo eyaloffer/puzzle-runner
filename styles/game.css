@@ -5,7 +5,8 @@
 }
 
 body {
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
+  font-weight: 500;
   background: #1E3A5F;
   overflow: hidden;
   height: 100vh;
@@ -95,7 +96,7 @@ input, button, textarea, select {
   background: #7EC8E3;
   color: #1E3A5F;
   transition: all 0.2s;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .btn-guess:hover {
@@ -185,7 +186,7 @@ input, button, textarea, select {
   transition: border-color 0.2s;
   direction: auto;
   unicode-bidi: plaintext;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .guess-input:focus {
@@ -217,7 +218,7 @@ input, button, textarea, select {
   background: transparent;
   color: #a0aec0;
   transition: all 0.2s;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .btn-secondary:hover {
@@ -445,7 +446,7 @@ input, button, textarea, select {
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .btn-primary {
@@ -624,7 +625,7 @@ input, button, textarea, select {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: 'Secular One', sans-serif;
+  font-family: 'SN Pro', 'Secular One', sans-serif;
 }
 
 .share-btn svg {
