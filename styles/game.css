@@ -669,8 +669,8 @@ input, button, textarea, select {
 @media (max-width: 768px) {
   .hud {
     flex-direction: column;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 10px 14px;
   }
 
   .collected-pieces {
@@ -680,133 +680,201 @@ input, button, textarea, select {
 
   .hud-right {
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .victory-screen {
+    padding: 16px;
+    align-items: center;
   }
 
   .victory-content {
-    padding: 15px;
-  }
-
-  .victory-content h1.victory-title {
-    font-size: 1.8em;
-    margin-bottom: 24px;
-    gap: 0.12em;
-  }
-
-  .solved-phrase {
-    font-size: 1.4em;
-    padding: 24px 20px;
-    margin-bottom: 24px;
-  }
-
-  .instructions {
-    padding: 30px 25px;
-    width: 92%;
-  }
-
-  .instructions p {
-    font-size: 1em;
-    margin-bottom: 16px;
-  }
-
-  .guess-content {
-    padding: 30px 25px;
-    width: 95%;
-  }
-
-  .guess-content h2 {
-    font-size: 1.5em;
-    margin-bottom: 16px;
-  }
-
-  .guess-hint {
-    font-size: 1.2em;
-    letter-spacing: 0.2em;
-    padding: 16px 12px;
-    margin-bottom: 20px;
-  }
-
-  .guess-input {
-    padding: 14px 16px;
-    font-size: 1.1em;
-    margin-bottom: 20px;
-  }
-
-  .guess-buttons {
+    padding: 16px;
+    display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .guess-buttons .btn-primary,
-  .guess-buttons .btn-secondary {
-    width: 100%;
-    padding: 14px 24px;
-  }
-
-  .btn-guess {
-    padding: 10px 18px;
-    font-size: 0.9em;
-  }
-
-  .btn-start {
-    padding: 14px 36px;
-    font-size: 1.15em;
-  }
-
-  .btn-primary {
-    padding: 14px 36px;
-    font-size: 1.1em;
-  }
-
-  .share-buttons {
-    flex-direction: row;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .share-btn {
-    padding: 12px 20px;
-    font-size: 0.95em;
-    flex: 1;
-    min-width: 140px;
-  }
-
-  .share-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-@media (max-width: 400px) {
-  .hud {
-    padding: 10px 12px;
-  }
-
-  .label {
-    font-size: 0.9em;
-  }
-
-  .pieces-display {
-    font-size: 1em;
-  }
-
-  .progress {
-    font-size: 0.85em;
+    align-items: center;
+    justify-content: center;
   }
 
   .victory-content h1.victory-title {
-    font-size: 1.5em;
+    font-size: 1.6em;
+    margin-bottom: 16px;
     gap: 0.1em;
   }
 
   .solved-phrase {
     font-size: 1.2em;
-    padding: 20px 16px;
+    padding: 16px 14px;
+    margin-bottom: 16px;
+  }
+
+  .share-buttons {
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 14px;
   }
 
   .share-btn {
-    min-width: 120px;
     padding: 10px 16px;
     font-size: 0.9em;
+  }
+
+  .victory-content .btn-primary {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .instructions {
+    padding: 24px 20px;
+    width: 90%;
+  }
+
+  .instructions p {
+    font-size: 0.95em;
+    margin-bottom: 12px;
+  }
+
+  .btn-start {
+    padding: 12px 32px;
+    font-size: 1.05em;
+    margin-top: 16px;
+  }
+
+  .guess-modal {
+    padding: 16px;
+    align-items: center;
+  }
+
+  .guess-content {
+    padding: 24px 20px;
+    width: 92%;
+  }
+
+  .guess-content h2 {
+    font-size: 1.3em;
+    margin-bottom: 14px;
+  }
+
+  .guess-hint {
+    font-size: 1.1em;
+    letter-spacing: 0.15em;
+    padding: 14px 10px;
+    margin-bottom: 16px;
+  }
+
+  .guess-input {
+    padding: 12px 14px;
+    font-size: 1em;
+    margin-bottom: 16px;
+  }
+
+  .guess-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .guess-buttons .btn-primary,
+  .guess-buttons .btn-secondary {
+    width: 100%;
+    padding: 12px 20px;
+  }
+
+  .btn-guess {
+    padding: 8px 14px;
+    font-size: 0.85em;
+  }
+
+  .btn-primary {
+    padding: 12px 28px;
+    font-size: 1em;
+  }
+
+  .share-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-width: 400px) {
+  .hud {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .label {
+    font-size: 0.8em;
+  }
+
+  .pieces-display {
+    font-size: 0.9em;
+    letter-spacing: 2px;
+  }
+
+  .progress {
+    font-size: 0.8em;
+  }
+
+  .victory-content h1.victory-title {
+    font-size: 1.4em;
+    margin-bottom: 12px;
+  }
+
+  .solved-phrase {
+    font-size: 1.1em;
+    padding: 14px 12px;
+    margin-bottom: 12px;
+  }
+
+  .share-buttons {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .share-btn {
+    min-width: 100px;
+    padding: 8px 12px;
+    font-size: 0.8em;
+  }
+
+  .share-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .victory-content .btn-primary {
+    padding: 10px 20px;
+    font-size: 0.9em;
+  }
+
+  .instructions {
+    padding: 20px 16px;
+  }
+
+  .instructions p {
+    font-size: 0.9em;
+  }
+
+  .btn-start {
+    padding: 10px 24px;
+    font-size: 0.95em;
+  }
+
+  .guess-content {
+    padding: 20px 16px;
+  }
+
+  .guess-content h2 {
+    font-size: 1.2em;
+  }
+
+  .guess-hint {
+    font-size: 1em;
+    padding: 12px 8px;
+  }
+
+  .btn-guess {
+    padding: 6px 10px;
+    font-size: 0.8em;
   }
 }

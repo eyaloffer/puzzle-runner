@@ -269,6 +269,12 @@ function updateHUD() {
 
 // Start the game
 function startGame() {
+  // Cancel any existing game loop to prevent double-speed bug
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+
   gameStarted = true;
   gameOver = false;
   instructions.classList.add('hidden');

@@ -50,21 +50,27 @@
       box-sizing: border-box;
     }
 
+    html {
+      height: 100%;
+    }
+
     body {
       font-family: 'SN Pro', 'Secular One', sans-serif;
       font-weight: 500;
       background: linear-gradient(135deg, #5B9BD5 0%, #7EC8E3 100%);
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 20px;
+      overflow: hidden;
     }
 
     .container {
       background: white;
       border-radius: 16px;
-      padding: 60px 50px;
+      padding: 50px 40px;
       max-width: 480px;
       width: 100%;
       text-align: center;
@@ -74,15 +80,15 @@
     h1 {
       color: #1E3A5F;
       font-size: 2.8em;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       font-weight: 600;
     }
 
     p {
       color: #666;
       font-size: 1.1em;
-      margin-bottom: 35px;
-      line-height: 1.6;
+      margin-bottom: 28px;
+      line-height: 1.5;
     }
 
     a {
@@ -105,22 +111,27 @@
     }
 
     @media (max-width: 500px) {
+      body {
+        padding: 16px;
+      }
+
       .container {
-        padding: 45px 30px;
+        padding: 36px 24px;
       }
 
       h1 {
         font-size: 2.2em;
+        margin-bottom: 12px;
       }
 
       p {
-        font-size: 1em;
-        margin-bottom: 30px;
+        font-size: 0.95em;
+        margin-bottom: 24px;
       }
 
       a {
-        padding: 14px 36px;
-        font-size: 1.1em;
+        padding: 14px 32px;
+        font-size: 1em;
       }
     }
   </style>
