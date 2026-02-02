@@ -104,6 +104,23 @@ input, button, textarea, select {
   transform: scale(1.05);
 }
 
+.create-own-link {
+  color: #7EC8E3;
+  text-decoration: none;
+  font-size: 0.95em;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.create-own-link:hover {
+  background: rgba(126, 200, 227, 0.15);
+  color: #5B9BD5;
+  text-decoration: underline;
+}
+
 /* Guess modal */
 .guess-modal {
   position: absolute;
@@ -876,5 +893,10 @@ input, button, textarea, select {
   .btn-guess {
     padding: 6px 10px;
     font-size: 0.8em;
+  }
+
+  .create-own-link {
+    font-size: 0.75em;
+    padding: 6px 10px;
   }
 }
