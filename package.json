@@ -6,9 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "perf:baseline": "node dev/performance-test.js --mode baseline",
+    "perf:compare": "node dev/performance-test.js --mode compare",
+    "perf:test": "node dev/performance-test.js --mode test",
+    "perf:quick": "node dev/performance-test.js --mode test --quick"
   },
   "devDependencies": {
+    "playwright": "^1.40.0",
     "vite": "^5.0.0"
   }
 }

@@ -29,6 +29,8 @@ const playAgainBtn = document.getElementById('playAgainBtn');
 const failCountDisplay = document.getElementById('failCountDisplay');
 const instructions = document.getElementById('instructions');
 const startBtn = document.getElementById('startBtn');
+const countdown = document.getElementById('countdown');
+const countdownNumber = document.getElementById('countdownNumber');
 const guessBtn = document.getElementById('guessBtn');
 const guessModal = document.getElementById('guessModal');
 const guessHint = document.getElementById('guessHint');
@@ -62,6 +64,7 @@ let particleSystem = new ParticleSystem();
 // Session timer (persists across retries)
 let sessionStartTime = null;
 let completionTime = null;
+let isFirstStart = true; // Track if this is the first game start (for countdown)
 
 // Flappy Bird style constants (values may be overridden for mobile)
 let PLAYER_X = 150; // Fixed X position for player
@@ -289,7 +292,13 @@ function drawInitialScreen() {
 
 // Update HUD display
 function updateHUD() {
-  piecesDisplay.textContent = puzzle.getReconstructedPhrase();
+  // Hide phrase when all letters are collected
+  if (puzzle.isComplete()) {
+    piecesDisplay.textContent = '';
+  } else {
+    piecesDisplay.textContent = puzzle.getReconstructedPhrase();
+  }
+
   progressText.textContent = `${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`;
 
   // Apply RTL for Hebrew phrases
@@ -315,30 +324,90 @@ function startGame() {
   // Clear particle system
   particleSystem.clear();
 
+  // Hide instructions
+  instructions.classList.add('hidden');
+
+  // Show countdown only on first start, skip on retries
+  if (isFirstStart) {
+    isFirstStart = false;
+    showCountdown();
+  } else {
+    // Skip countdown on retry - initialize and start immediately
+    world = new World(canvasWidth, canvasHeight, theme);
+    player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji, theme });
+
+    // Quick pre-render
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    world.draw(ctx);
+
+    beginGame();
+  }
+}
+
+// Show countdown and pre-initialize game during countdown
+function showCountdown() {
+  countdown.classList.remove('hidden');
+  countdownNumber.textContent = '3';
+
+  // Create game objects early (during countdown) to pre-cache gradients
+  world = new World(canvasWidth, canvasHeight, theme);
+  player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji, theme });
+
+  // Pre-render multiple frames to cache all gradients (off-screen)
+  // This is especially important for complex themes (space, evil) with heavy gradients
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  world.draw(ctx);
+
+  // Continue pre-rendering during countdown to optimize gradients
+  requestAnimationFrame(() => {
+    world.draw(ctx);
+    requestAnimationFrame(() => {
+      world.draw(ctx);
+    });
+  });
+
+  // Countdown sequence: 3 → 2 → 1 → GO!
+  setTimeout(() => {
+    countdownNumber.textContent = '2';
+    // Trigger animation by removing and re-adding (forces restart)
+    countdownNumber.style.animation = 'none';
+    setTimeout(() => { countdownNumber.style.animation = ''; }, 10);
+  }, 333);
+
+  setTimeout(() => {
+    countdownNumber.textContent = '1';
+    countdownNumber.style.animation = 'none';
+    setTimeout(() => { countdownNumber.style.animation = ''; }, 10);
+  }, 666);
+
+  setTimeout(() => {
+    // Hide countdown and start game
+    countdown.classList.add('hidden');
+    beginGame();
+  }, 1000);
+}
+
+// Begin the actual game after countdown
+function beginGame() {
   gameStarted = true;
   gameOver = false;
-  instructions.classList.add('hidden');
 
   // Start session timer only on first start (not on retry)
   if (sessionStartTime === null) {
     sessionStartTime = performance.now();
   }
 
-  // Create game objects with theme
-  world = new World(canvasWidth, canvasHeight, theme);
-  player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji, theme });
-  
   // Initialize pieces to spawn - only one index per distinct non-space character
   piecesToSpawn = puzzle.getUniqueNonSpaceIndices().slice();
   shuffleArray(piecesToSpawn);
-  
+
   // Reset game state
   collectibles = [];
   obstacles = [];
   score = 0;
   frameCount = 0;
   lastObstacleX = canvasWidth; // Start with first obstacle off screen
-  
+
   // Start game loop
   gameLoop();
 }

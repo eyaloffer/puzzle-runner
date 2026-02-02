@@ -177,13 +177,30 @@ export class Obstacle {
   collidesWith(bounds) {
     // Check if player is within the X range of the pipe
     if (bounds.x + bounds.width > this.x && bounds.x < this.x + this.width) {
-      // Check if player hits top pipe
-      if (bounds.y < this.topHeight) {
-        return true;
-      }
-      // Check if player hits bottom pipe
-      if (bounds.y + bounds.height > this.bottomY) {
-        return true;
+      // For asteroids, account for the full column height
+      if (this.theme?.obstacles?.type === 'asteroid') {
+        const asteroidSize = 35;
+        const topExtent = this.topHeight - 30 - asteroidSize;
+        const bottomExtent = this.bottomY + 30 + asteroidSize;
+
+        // Check if player hits top column (extends from 0 to topExtent)
+        if (bounds.y < topExtent) {
+          return true;
+        }
+        // Check if player hits bottom column (extends from bottomExtent to canvas height)
+        if (bounds.y + bounds.height > bottomExtent) {
+          return true;
+        }
+      } else {
+        // Standard collision for pipes, spikes, coral
+        // Check if player hits top pipe
+        if (bounds.y < this.topHeight) {
+          return true;
+        }
+        // Check if player hits bottom pipe
+        if (bounds.y + bounds.height > this.bottomY) {
+          return true;
+        }
       }
     }
     return false;
