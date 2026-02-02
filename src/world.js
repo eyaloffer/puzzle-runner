@@ -184,13 +184,17 @@ export class World {
    * @param {Array} clouds
    */
   drawFluffyClouds(ctx, clouds) {
-    const cloudColor = this.theme?.clouds?.color || 'rgba(255, 255, 255, 0.9)';
+    const defaultColor = 'rgba(255, 255, 255, 0.9)';
+    const cloudColor = (this.theme?.clouds?.color && typeof this.theme.clouds.color === 'string')
+      ? this.theme.clouds.color
+      : defaultColor;
 
     clouds.forEach(cloud => {
       const yDrift = Math.sin(cloud.yOffset) * cloud.yDrift * 3;
       const y = cloud.y + yDrift;
 
-      ctx.fillStyle = cloudColor.replace(/[\d.]+\)/, `${cloud.opacity})`);
+      const safeColor = cloudColor || defaultColor;
+      ctx.fillStyle = safeColor.replace(/[\d.]+\)/, `${cloud.opacity})`);
       ctx.beginPath();
 
       // Main cloud body
@@ -209,32 +213,48 @@ export class World {
    * @param {Array} clouds
    */
   drawFireClouds(ctx, clouds) {
-    const primaryColor = this.theme?.clouds?.color || 'rgba(255, 69, 0, 0.7)';
-    const secondaryColor = this.theme?.clouds?.secondaryColor || 'rgba(255, 140, 0, 0.5)';
+    const defaultPrimaryColor = 'rgba(255, 69, 0, 0.7)';
+    const defaultSecondaryColor = 'rgba(255, 140, 0, 0.5)';
+    const primaryColor = (this.theme?.clouds?.color && typeof this.theme.clouds.color === 'string')
+      ? this.theme.clouds.color
+      : defaultPrimaryColor;
+    const secondaryColor = (this.theme?.clouds?.secondaryColor && typeof this.theme.clouds.secondaryColor === 'string')
+      ? this.theme.clouds.secondaryColor
+      : defaultSecondaryColor;
 
-    clouds.forEach(cloud => {
+    // Use time-based flicker for better performance (avoid Math.random every frame)
+    const time = Date.now() * 0.003;
+
+    clouds.forEach((cloud, index) => {
       const yDrift = Math.sin(cloud.yOffset) * cloud.yDrift * 5;
       const y = cloud.y + yDrift;
 
-      // Flickering animation
-      const flicker = 0.8 + Math.random() * 0.4;
+      // Time-based flickering (cheaper than random + unique per cloud)
+      const flicker = 0.8 + Math.sin(time + index * 0.5) * 0.2 + 0.2;
       const opacity = cloud.opacity * flicker;
 
-      // Create flame-like shapes with gradient
-      const gradient = ctx.createRadialGradient(cloud.x, y, 0, cloud.x, y, cloud.size * 1.5);
-      gradient.addColorStop(0, secondaryColor.replace(/[\d.]+\)/, `${opacity})`));
-      gradient.addColorStop(0.6, primaryColor.replace(/[\d.]+\)/, `${opacity * 0.7})`));
-      gradient.addColorStop(1, primaryColor.replace(/[\d.]+\)/, '0)'));
+      // Use globalAlpha instead of creating new color strings
+      ctx.globalAlpha = opacity;
 
-      ctx.fillStyle = gradient;
+      // Simplified rendering without gradient (much faster)
+      // Draw secondary color (outer glow)
+      const safePrimary = primaryColor || defaultPrimaryColor;
+      const safeSecondary = secondaryColor || defaultSecondaryColor;
+      ctx.fillStyle = safeSecondary;
       ctx.beginPath();
+      ctx.arc(cloud.x, y, cloud.size * 1.3, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Irregular flame shape
+      // Draw primary color (inner flame)
+      ctx.globalAlpha = opacity * 0.8;
+      ctx.fillStyle = safePrimary;
+      ctx.beginPath();
       ctx.arc(cloud.x, y, cloud.size, 0, Math.PI * 2);
       ctx.arc(cloud.x + cloud.size * 0.5, y - cloud.size * 0.4, cloud.size * 0.6, 0, Math.PI * 2);
       ctx.arc(cloud.x - cloud.size * 0.3, y + cloud.size * 0.2, cloud.size * 0.7, 0, Math.PI * 2);
-
       ctx.fill();
+
+      ctx.globalAlpha = 1.0; // Reset
     });
   }
 
@@ -244,20 +264,28 @@ export class World {
    * @param {Array} clouds
    */
   drawBubbles(ctx, clouds) {
-    const outerColor = this.theme?.clouds?.color || 'rgba(173, 216, 230, 0.4)';
-    const innerColor = this.theme?.clouds?.innerColor || 'rgba(255, 255, 255, 0.3)';
+    const defaultOuterColor = 'rgba(173, 216, 230, 0.4)';
+    const defaultInnerColor = 'rgba(255, 255, 255, 0.3)';
+    const outerColor = (this.theme?.clouds?.color && typeof this.theme.clouds.color === 'string')
+      ? this.theme.clouds.color
+      : defaultOuterColor;
+    const innerColor = (this.theme?.clouds?.innerColor && typeof this.theme.clouds.innerColor === 'string')
+      ? this.theme.clouds.innerColor
+      : defaultInnerColor;
 
     clouds.forEach(cloud => {
       const y = cloud.y;
 
       // Outer bubble
-      ctx.fillStyle = outerColor.replace(/[\d.]+\)/, `${cloud.opacity})`);
+      const safeOuter = outerColor || defaultOuterColor;
+      ctx.fillStyle = safeOuter.replace(/[\d.]+\)/, `${cloud.opacity})`);
       ctx.beginPath();
       ctx.arc(cloud.x, y, cloud.size, 0, Math.PI * 2);
       ctx.fill();
 
       // Inner highlight
-      ctx.fillStyle = innerColor.replace(/[\d.]+\)/, `${cloud.opacity * 0.6})`);
+      const safeInner = innerColor || defaultInnerColor;
+      ctx.fillStyle = safeInner.replace(/[\d.]+\)/, `${cloud.opacity * 0.6})`);
       ctx.beginPath();
       ctx.arc(cloud.x - cloud.size * 0.3, y - cloud.size * 0.3, cloud.size * 0.4, 0, Math.PI * 2);
       ctx.fill();
@@ -277,10 +305,22 @@ export class World {
    * @param {Array} clouds
    */
   drawNebulaClouds(ctx, clouds) {
+    // Ensure all colors have fallback values
+    const defaultColors = [
+      'rgba(255, 105, 180, 0.3)',
+      'rgba(147, 112, 219, 0.3)',
+      'rgba(138, 43, 226, 0.2)'
+    ];
+
+    // Safely get colors with type checking
+    const getColor = (color, fallback) => {
+      return (color && typeof color === 'string') ? color : fallback;
+    };
+
     const colors = [
-      this.theme?.clouds?.color || 'rgba(255, 105, 180, 0.3)',
-      this.theme?.clouds?.secondaryColor || 'rgba(147, 112, 219, 0.3)',
-      this.theme?.clouds?.tertiaryColor || 'rgba(138, 43, 226, 0.2)'
+      getColor(this.theme?.clouds?.color, defaultColors[0]),
+      getColor(this.theme?.clouds?.secondaryColor, defaultColors[1]),
+      getColor(this.theme?.clouds?.tertiaryColor, defaultColors[2])
     ];
 
     clouds.forEach(cloud => {
@@ -290,9 +330,21 @@ export class World {
       // Create glowing nebula effect with multiple colors
       const colorIndex = Math.floor(cloud.x / 100) % 3;
       const gradient = ctx.createRadialGradient(cloud.x, y, 0, cloud.x, y, cloud.size * 2);
-      gradient.addColorStop(0, colors[colorIndex].replace(/[\d.]+\)/, `${cloud.opacity * 0.8})`));
-      gradient.addColorStop(0.5, colors[(colorIndex + 1) % 3].replace(/[\d.]+\)/, `${cloud.opacity * 0.5})`));
-      gradient.addColorStop(1, colors[(colorIndex + 2) % 3].replace(/[\d.]+\)/, '0)'));
+
+      // Safely handle color replacement with guaranteed string values
+      // Triple fallback: theme color -> colors array -> default array -> hard-coded default
+      const color0 = colors[colorIndex] || defaultColors[colorIndex] || 'rgba(255, 105, 180, 0.3)';
+      const color1 = colors[(colorIndex + 1) % 3] || defaultColors[(colorIndex + 1) % 3] || 'rgba(147, 112, 219, 0.3)';
+      const color2 = colors[(colorIndex + 2) % 3] || defaultColors[(colorIndex + 2) % 3] || 'rgba(138, 43, 226, 0.2)';
+
+      // Extra safety: ensure we have valid strings before calling replace
+      const safeColor0 = (typeof color0 === 'string' && color0) ? color0 : 'rgba(255, 105, 180, 0.3)';
+      const safeColor1 = (typeof color1 === 'string' && color1) ? color1 : 'rgba(147, 112, 219, 0.3)';
+      const safeColor2 = (typeof color2 === 'string' && color2) ? color2 : 'rgba(138, 43, 226, 0.2)';
+
+      gradient.addColorStop(0, safeColor0.replace(/[\d.]+\)/, `${cloud.opacity * 0.8})`));
+      gradient.addColorStop(0.5, safeColor1.replace(/[\d.]+\)/, `${cloud.opacity * 0.5})`));
+      gradient.addColorStop(1, safeColor2.replace(/[\d.]+\)/, '0)'));
 
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -305,7 +357,7 @@ export class World {
       ctx.fill();
 
       // Add glow effect
-      ctx.shadowColor = colors[colorIndex].replace(/[\d.]+\)/, '0.3)');
+      ctx.shadowColor = safeColor0.replace(/[\d.]+\)/, '0.3)');
       ctx.shadowBlur = 20;
       ctx.fill();
       ctx.shadowBlur = 0;

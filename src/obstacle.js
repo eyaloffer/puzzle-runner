@@ -177,13 +177,30 @@ export class Obstacle {
   collidesWith(bounds) {
     // Check if player is within the X range of the pipe
     if (bounds.x + bounds.width > this.x && bounds.x < this.x + this.width) {
-      // Check if player hits top pipe
-      if (bounds.y < this.topHeight) {
-        return true;
-      }
-      // Check if player hits bottom pipe
-      if (bounds.y + bounds.height > this.bottomY) {
-        return true;
+      // For asteroids, account for the full column height
+      if (this.theme?.obstacles?.type === 'asteroid') {
+        const asteroidSize = 35;
+        const topExtent = this.topHeight - 30 - asteroidSize;
+        const bottomExtent = this.bottomY + 30 + asteroidSize;
+
+        // Check if player hits top column (extends from 0 to topExtent)
+        if (bounds.y < topExtent) {
+          return true;
+        }
+        // Check if player hits bottom column (extends from bottomExtent to canvas height)
+        if (bounds.y + bounds.height > bottomExtent) {
+          return true;
+        }
+      } else {
+        // Standard collision for pipes, spikes, coral
+        // Check if player hits top pipe
+        if (bounds.y < this.topHeight) {
+          return true;
+        }
+        // Check if player hits bottom pipe
+        if (bounds.y + bounds.height > this.bottomY) {
+          return true;
+        }
       }
     }
     return false;
@@ -373,100 +390,75 @@ export class Obstacle {
     const colors = this.theme.obstacles.colors;
     const secondaryColors = this.theme.obstacles.secondaryColors;
     const outlineColor = this.theme.obstacles.outlineColor;
-    const glowColor = this.theme.obstacles.glowColor;
 
-    // Add subtle glow
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 10;
+    // Draw top asteroid column and rock
+    this.drawAsteroidColumn(ctx, 0, this.topHeight, colors, outlineColor, 'top');
 
-    // Draw top asteroid
-    this.drawSingleAsteroid(ctx, this.x + this.width / 2, this.topHeight - 30, 35, colors, outlineColor);
-
-    // Draw bottom asteroid
-    this.drawSingleAsteroid(ctx, this.x + this.width / 2, this.bottomY + 30, 35, secondaryColors, outlineColor);
-
-    ctx.shadowBlur = 0;
+    // Draw bottom asteroid column and rock
+    this.drawAsteroidColumn(ctx, this.bottomY, this.canvasHeight, secondaryColors, outlineColor, 'bottom');
   }
 
   /**
-   * Draw a single rotating asteroid
+   * Draw asteroid column with simple rock shape
    * @param {CanvasRenderingContext2D} ctx
-   * @param {number} centerX
-   * @param {number} centerY
-   * @param {number} size
+   * @param {number} startY
+   * @param {number} endY
    * @param {Array} colors
    * @param {string} outlineColor
+   * @param {string} position - 'top' or 'bottom'
    */
-  drawSingleAsteroid(ctx, centerX, centerY, size, colors, outlineColor) {
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(this.rotation);
+  drawAsteroidColumn(ctx, startY, endY, colors, outlineColor, position) {
+    const columnWidth = this.width;
+    const asteroidSize = 35;
+    const asteroidX = this.x + columnWidth / 2;
+    const asteroidY = position === 'top' ? this.topHeight - 30 : this.bottomY + 30;
 
-    // Create gradient
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
-    gradient.addColorStop(0, colors[2]);
-    gradient.addColorStop(0.5, colors[1]);
-    gradient.addColorStop(1, colors[0]);
+    // Create linear gradient for column (simpler than radial)
+    const columnGradient = ctx.createLinearGradient(this.x, 0, this.x + columnWidth, 0);
+    columnGradient.addColorStop(0, colors[0]);
+    columnGradient.addColorStop(0.5, colors[2]);
+    columnGradient.addColorStop(1, colors[0]);
 
-    // Draw irregular rock shape
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
+    ctx.fillStyle = columnGradient;
 
-    const points = 8;
-    for (let i = 0; i < points; i++) {
-      const angle = (i / points) * Math.PI * 2;
-      const radius = size + Math.sin(i * 2.5) * 8;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+    // Draw column
+    if (position === 'top') {
+      const columnHeight = asteroidY - asteroidSize - startY;
+      if (columnHeight > 0) {
+        ctx.fillRect(this.x, startY, columnWidth, columnHeight);
+        ctx.strokeStyle = outlineColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x, startY, columnWidth, columnHeight);
+      }
+    } else {
+      const columnHeight = endY - (asteroidY + asteroidSize);
+      if (columnHeight > 0) {
+        ctx.fillRect(this.x, asteroidY + asteroidSize, columnWidth, columnHeight);
+        ctx.strokeStyle = outlineColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x, asteroidY + asteroidSize, columnWidth, columnHeight);
       }
     }
 
-    ctx.closePath();
-    ctx.fill();
+    // Draw simple asteroid rock as rounded rectangle rotated
+    ctx.save();
+    ctx.translate(asteroidX, asteroidY);
+    ctx.rotate(this.rotation);
 
-    // Outline
+    // Use simple box shape instead of complex polygon
+    const gradient = ctx.createLinearGradient(-asteroidSize / 2, -asteroidSize / 2, asteroidSize / 2, asteroidSize / 2);
+    gradient.addColorStop(0, colors[0]);
+    gradient.addColorStop(0.5, colors[2]);
+    gradient.addColorStop(1, colors[1]);
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(-asteroidSize / 2, -asteroidSize / 2, asteroidSize, asteroidSize);
+
+    // Outline only
     ctx.strokeStyle = outlineColor;
     ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Add crater details
-    ctx.fillStyle = colors[0];
-    ctx.beginPath();
-    ctx.arc(size * 0.3, -size * 0.2, size * 0.15, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(-size * 0.2, size * 0.3, size * 0.1, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.strokeRect(-asteroidSize / 2, -asteroidSize / 2, asteroidSize, asteroidSize);
 
     ctx.restore();
-
-    // Draw vertical columns extending from asteroids
-    const columnWidth = this.width;
-    const gradient2 = ctx.createLinearGradient(this.x, 0, this.x + columnWidth, 0);
-    gradient2.addColorStop(0, colors[0]);
-    gradient2.addColorStop(0.5, colors[2]);
-    gradient2.addColorStop(1, colors[0]);
-
-    ctx.fillStyle = gradient2;
-
-    // Top column
-    if (centerY < this.canvasHeight / 2) {
-      ctx.fillRect(this.x, 0, columnWidth, centerY - size);
-      ctx.strokeStyle = outlineColor;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x, 0, columnWidth, centerY - size);
-    } else {
-      // Bottom column
-      ctx.fillRect(this.x, centerY + size, columnWidth, this.canvasHeight - (centerY + size));
-      ctx.strokeStyle = outlineColor;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(this.x, centerY + size, columnWidth, this.canvasHeight - (centerY + size));
-    }
   }
 }
