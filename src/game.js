@@ -5,11 +5,18 @@ import { World } from './world.js';
 import { Collectible } from './collectible.js';
 import { Obstacle } from './obstacle.js';
 import { ParticleSystem } from './particles.js';
+import { getTheme } from './themes.js';
 
 // Get URL parameters
 const urlParams = new URLSearchParams(window.location.search);
 const encodedPhrase = urlParams.get('p');
 const playerEmoji = urlParams.get('e') || '🐦';
+const themeId = urlParams.get('t') || 'classic';
+
+// Get theme configuration
+const theme = getTheme(themeId);
+console.log('Theme ID:', themeId);
+console.log('Theme loaded:', theme);
 
 // DOM elements
 const canvas = document.getElementById('gameCanvas');
@@ -125,10 +132,11 @@ function init() {
     const phrase = decodeFromUrlSafe(encodedPhrase);
     console.log('Decoded phrase:', phrase);
 
-    // Track decoded phrase in analytics (production only)
+    // Track decoded phrase and theme in analytics (production only)
     if (typeof gtag !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       gtag('event', 'puzzle_played', {
-        'phrase': phrase
+        'phrase': phrase,
+        'theme': themeId
       });
     }
 
@@ -260,10 +268,21 @@ function resizeCanvas() {
 
 // Draw initial screen before game starts
 function drawInitialScreen() {
-  // Just draw a clean sky gradient background
+  // Draw sky gradient using theme colors
+  const skyColors = theme?.sky?.gradient || ['#87CEEB', '#B0E0F0', '#E0F6FF'];
   const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-  gradient.addColorStop(0, '#87CEEB');
-  gradient.addColorStop(1, '#E0F6FF');
+
+  if (skyColors.length === 3) {
+    gradient.addColorStop(0, skyColors[0]);
+    gradient.addColorStop(0.5, skyColors[1]);
+    gradient.addColorStop(1, skyColors[2]);
+  } else {
+    // Fallback for different gradient lengths
+    skyColors.forEach((color, index) => {
+      gradient.addColorStop(index / (skyColors.length - 1), color);
+    });
+  }
+
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 }
@@ -305,9 +324,9 @@ function startGame() {
     sessionStartTime = performance.now();
   }
 
-  // Create game objects
-  world = new World(canvasWidth, canvasHeight);
-  player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji });
+  // Create game objects with theme
+  world = new World(canvasWidth, canvasHeight, theme);
+  player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji, theme });
   
   // Initialize pieces to spawn - only one index per distinct non-space character
   piecesToSpawn = puzzle.getUniqueNonSpaceIndices().slice();
@@ -489,8 +508,8 @@ function spawnObstacles() {
 function spawnSingleObstacle() {
   const maxGapY = canvasHeight - MIN_GAP_Y - 50;
   const gapY = MIN_GAP_Y + Math.random() * (maxGapY - MIN_GAP_Y);
-  
-  const obstacle = new Obstacle(canvasWidth + 50, canvasHeight, gapY, GAP_SIZE);
+
+  const obstacle = new Obstacle(canvasWidth + 50, canvasHeight, gapY, GAP_SIZE, theme);
   // apply global scroll speed
   obstacle.scrollSpeed = SCROLL_SPEED;
   obstacles.push(obstacle);
@@ -543,7 +562,7 @@ function spawnCollectibleInGap(obstacle) {
   // Clamp to canvas bounds
   spawnY = Math.max(10, Math.min(canvasHeight - 50, spawnY));
 
-  const collectible = new Collectible(spawnX, spawnY, nextIndex, piece);
+  const collectible = new Collectible(spawnX, spawnY, nextIndex, piece, theme);
   // apply mobile-friendly adjustments
   collectible.scrollSpeed = SCROLL_SPEED;
   if (isMobileDevice()) {

@@ -14,13 +14,32 @@ export class Player {
     this.gravity = typeof opts.gravity === 'number' ? opts.gravity : 0.6;
     this.flapStrength = typeof opts.flapStrength === 'number' ? opts.flapStrength : -10;
     this.emoji = opts.emoji || '🐦';
+    this.theme = opts.theme || null;
     this.rotation = 0; // Visual rotation based on velocity
     this.collectEffect = 0; // Collection animation timer
 
-    // Trail effect - smooth glowing particles
+    // Trail effect - smooth glowing particles (use theme colors)
     this.trail = [];
     this.maxTrailLength = 12;
-    this.trailColor = '#5B9BD5'; // Match theme color
+    this.trailColor = this.theme?.trail?.color || '#5B9BD5';
+    this.glowColor = this.theme?.trail?.glowColor || '#FFD93D';
+  }
+
+  /**
+   * Convert hex color to RGB object
+   * @param {string} hex - Hex color string (e.g., "#5B9BD5")
+   * @returns {{r: number, g: number, b: number}}
+   */
+  hexToRgb(hex) {
+    // Remove # if present
+    hex = hex.replace('#', '');
+
+    // Parse hex to RGB
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    return { r, g, b };
   }
 
   /**
@@ -148,33 +167,35 @@ export class Player {
         ctx.lineTo(p.x, p.y);
       }
 
-      // Gradient stroke
+      // Gradient stroke (use theme color)
       const gradient = ctx.createLinearGradient(
         regularTrail[0].x, regularTrail[0].y,
         regularTrail[regularTrail.length - 1].x, regularTrail[regularTrail.length - 1].y
       );
-      gradient.addColorStop(0, 'rgba(91, 155, 213, 0)');
-      gradient.addColorStop(0.5, 'rgba(91, 155, 213, 0.3)');
-      gradient.addColorStop(1, 'rgba(91, 155, 213, 0.5)');
+      const trailRGB = this.hexToRgb(this.trailColor);
+      gradient.addColorStop(0, `rgba(${trailRGB.r}, ${trailRGB.g}, ${trailRGB.b}, 0)`);
+      gradient.addColorStop(0.5, `rgba(${trailRGB.r}, ${trailRGB.g}, ${trailRGB.b}, 0.3)`);
+      gradient.addColorStop(1, `rgba(${trailRGB.r}, ${trailRGB.g}, ${trailRGB.b}, 0.5)`);
 
       ctx.strokeStyle = gradient;
       ctx.lineWidth = 8;
       ctx.stroke();
 
       // Inner brighter line
-      ctx.strokeStyle = 'rgba(126, 200, 227, 0.4)';
+      ctx.strokeStyle = `rgba(${trailRGB.r}, ${trailRGB.g}, ${trailRGB.b}, 0.4)`;
       ctx.lineWidth = 3;
       ctx.stroke();
     }
 
-    // Draw burst particles as glowing dots
+    // Draw burst particles as glowing dots (use theme color)
     const burstParticles = this.trail.filter(p => p.isBurst);
+    const trailRGB = this.hexToRgb(this.trailColor);
     for (const particle of burstParticles) {
       ctx.globalAlpha = particle.alpha;
       ctx.shadowBlur = 8;
       ctx.shadowColor = this.trailColor;
 
-      ctx.fillStyle = 'rgba(126, 200, 227, 0.8)';
+      ctx.fillStyle = `rgba(${trailRGB.r}, ${trailRGB.g}, ${trailRGB.b}, 0.8)`;
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.fill();
@@ -230,7 +251,7 @@ export class Player {
     // Draw glow during collection
     if (this.collectEffect > 0) {
       ctx.shadowBlur = 20 * this.collectEffect;
-      ctx.shadowColor = '#FFD93D';
+      ctx.shadowColor = this.glowColor;
     }
 
     // Draw emoji character (explicit fillStyle needed for mobile)

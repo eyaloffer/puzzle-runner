@@ -9,6 +9,7 @@ const copyBtn = document.getElementById('copyBtn');
 const copySuccess = document.getElementById('copySuccess');
 const emojiGrid = document.getElementById('emojiGrid');
 const customEmojiInput = document.getElementById('customEmojiInput');
+const themeGrid = document.getElementById('themeGrid');
 const errorMessage = document.getElementById('errorMessage');
 const shareTwitterBtn = document.getElementById('shareTwitterBtn');
 const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
@@ -17,8 +18,9 @@ const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
 const MIN_PHRASE_LENGTH = 2;
 const MAX_PHRASE_LENGTH = 100;
 
-// Track selected emoji
+// Track selected emoji and theme
 let selectedEmoji = '🐦';
+let selectedTheme = 'classic';
 let currentGameUrl = '';
 
 // Handle emoji grid selection
@@ -51,6 +53,17 @@ customEmojiInput.addEventListener('focus', () => {
     emojiGrid.querySelectorAll('.emoji-option').forEach(btn => btn.classList.remove('selected'));
     customEmojiInput.classList.add('selected');
   }
+});
+
+// Handle theme grid selection
+themeGrid.addEventListener('click', (e) => {
+  const option = e.target.closest('.theme-option');
+  if (!option) return;
+
+  // Update selection
+  themeGrid.querySelectorAll('.theme-option').forEach(btn => btn.classList.remove('selected'));
+  option.classList.add('selected');
+  selectedTheme = option.dataset.theme;
 });
 
 // Validate phrase input
@@ -121,9 +134,9 @@ generateBtn.addEventListener('click', () => {
   // Encode the phrase
   const encoded = encodeToUrlSafe(phrase);
 
-  // Create the game URL with emoji parameter
+  // Create the game URL with emoji and theme parameters
   const baseUrl = window.location.origin + window.location.pathname.replace('sender.html', '');
-  currentGameUrl = `${baseUrl}game.html?p=${encoded}&e=${encodeURIComponent(emoji)}`;
+  currentGameUrl = `${baseUrl}game.html?p=${encoded}&e=${encodeURIComponent(emoji)}&t=${selectedTheme}`;
 
   // Display the link
   generatedLink.value = currentGameUrl;

@@ -1,9 +1,9 @@
 /**
- * Collectible class - represents a puzzle piece in the game world
+ * Collectible class - represents a theme-based puzzle piece in the game world
  */
 
 export class Collectible {
-  constructor(x, y, pieceIndex, pieceText) {
+  constructor(x, y, pieceIndex, pieceText, theme = null) {
     this.x = x;
     this.y = y;
     this.pieceIndex = pieceIndex;
@@ -13,13 +13,21 @@ export class Collectible {
     this.collected = false;
     this.offScreen = false;
     this.scrollSpeed = 3; // Horizontal movement speed
-    
-    // Visual properties
-    this.color = '#FFD93D';
+    this.theme = theme;
+
+    // Visual properties (use theme or defaults)
+    this.color = theme?.collectibles?.bgColor || '#FFD93D';
+    this.innerColor = theme?.collectibles?.innerColor || '#FFF5CC';
+    this.textColor = theme?.collectibles?.textColor || '#1E3A5F';
+    this.glowColor = theme?.collectibles?.glowColor || '#FFD93D';
+    this.glowRadius = theme?.collectibles?.glowRadius || 15;
+    this.pulse = theme?.collectibles?.pulse || false;
+
     this.bobOffset = 0;
     this.bobSpeed = 0.1;
     this.rotation = 0;
     this.rotationSpeed = 0.05;
+    this.pulseOffset = 0;
   }
   
   /**
@@ -28,13 +36,18 @@ export class Collectible {
   update() {
     // Move left (Flappy Bird style)
     this.x -= this.scrollSpeed;
-    
+
     // Bobbing animation
     this.bobOffset += this.bobSpeed;
-    
+
     // Rotation animation
     this.rotation += this.rotationSpeed;
-    
+
+    // Pulsing animation (for space theme)
+    if (this.pulse) {
+      this.pulseOffset += 0.05;
+    }
+
     // Check if off screen to the left
     if (this.x + this.width < 0) {
       this.offScreen = true;
@@ -58,9 +71,16 @@ export class Collectible {
     ctx.translate(this.x + this.width / 2, displayY + this.height / 2);
     ctx.rotate(this.rotation);
 
+    // Pulsing glow effect
+    let currentGlowRadius = this.glowRadius;
+    if (this.pulse) {
+      const pulseMultiplier = 1 + Math.sin(this.pulseOffset) * 0.3;
+      currentGlowRadius = this.glowRadius * pulseMultiplier;
+    }
+
     // Outer glow
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 15;
+    ctx.shadowColor = this.glowColor;
+    ctx.shadowBlur = currentGlowRadius;
 
     // Draw collectible background
     ctx.fillStyle = this.color;
@@ -73,13 +93,13 @@ export class Collectible {
     ctx.shadowColor = 'transparent';
 
     // Draw inner circle
-    ctx.fillStyle = '#FFF5CC';
+    ctx.fillStyle = this.innerColor;
     ctx.beginPath();
     ctx.arc(0, 0, this.width / 2 - 4, 0, Math.PI * 2);
     ctx.fill();
 
     // Draw the piece text
-    ctx.fillStyle = '#1E3A5F';
+    ctx.fillStyle = this.textColor;
     ctx.font = "bold 22px 'Secular One', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
