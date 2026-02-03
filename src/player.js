@@ -192,8 +192,7 @@ export class Player {
     const trailRGB = this.hexToRgb(this.trailColor);
     for (const particle of burstParticles) {
       ctx.globalAlpha = particle.alpha;
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = this.trailColor;
+      // REMOVED: shadowBlur for mobile performance
 
       ctx.fillStyle = `rgba(${trailRGB.r}, ${trailRGB.g}, ${trailRGB.b}, 0.8)`;
       ctx.beginPath();
@@ -201,8 +200,6 @@ export class Player {
       ctx.fill();
 
       // Bright center
-      ctx.shadowBlur = 0;
-      ctx.shadowColor = 'transparent';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size * 0.4, 0, Math.PI * 2);
@@ -248,11 +245,8 @@ export class Player {
     const scale = 1 + this.collectEffect * 0.3;
     ctx.scale(scale, scale);
 
-    // Draw glow during collection
-    if (this.collectEffect > 0) {
-      ctx.shadowBlur = 20 * this.collectEffect;
-      ctx.shadowColor = this.glowColor;
-    }
+    // REMOVED: Glow effect during collection (shadowBlur expensive on mobile)
+    // Collection visual feedback is still provided by scale animation
 
     // Draw emoji character (explicit fillStyle needed for mobile)
     ctx.fillStyle = '#000000';

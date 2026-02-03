@@ -2,24 +2,33 @@
  * World class - handles background with theme-based parallax clouds/effects
  */
 
+import { gradientCache } from './utils/gradientCache.js';
+
 export class World {
-  constructor(canvasWidth, canvasHeight, theme = null) {
+  constructor(canvasWidth, canvasHeight, theme = null, isMobile = false, mobileStarCount = 50, mobileCloudReduction = 0.5) {
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
     this.theme = theme;
-    console.log('World created with theme:', theme?.id);
+    this.isMobile = isMobile;
+    console.log('World created with theme:', theme?.id, isMobile ? '(mobile mode)' : '');
 
-    // Multiple cloud layers for parallax effect
+    // Multiple cloud layers for parallax effect (reduced on mobile)
+    const cloudMultiplier = isMobile ? mobileCloudReduction : 1;
     this.cloudLayers = [
-      this.generateClouds(5, 0.3, 0.6, 50, 70),   // Back layer - big, slow, faint
-      this.generateClouds(6, 0.5, 0.75, 35, 50),  // Middle layer
-      this.generateClouds(8, 0.8, 0.9, 20, 35),   // Front layer - small, fast, bright
+      this.generateClouds(Math.ceil(5 * cloudMultiplier), 0.3, 0.6, 50, 70),   // Back layer - big, slow, faint
+      this.generateClouds(Math.ceil(6 * cloudMultiplier), 0.5, 0.75, 35, 50),  // Middle layer
+      this.generateClouds(Math.ceil(8 * cloudMultiplier), 0.8, 0.9, 20, 35),   // Front layer - small, fast, bright
     ];
 
-    // Generate stars for space theme
+    // Generate stars for space theme with OFF-SCREEN CANVAS for performance
     this.stars = [];
+    this.starCanvas = null;
+    this.starCtx = null;
     if (theme?.sky?.stars) {
-      this.generateStars(150);
+      const starCount = isMobile ? mobileStarCount : 150;
+      console.log(`⭐ Generating ${starCount} stars${isMobile ? ' (mobile optimization)' : ''}`);
+      this.generateStars(starCount);
+      this.createStarCanvas(); // Pre-render stars to off-screen canvas
     }
   }
 
@@ -57,6 +66,31 @@ export class World {
         twinkleOffset: Math.random() * Math.PI * 2
       });
     }
+  }
+
+  /**
+   * Create off-screen canvas for stars (major performance optimization)
+   * Reduces 150 arc() calls per frame to 1 drawImage() call
+   */
+  createStarCanvas() {
+    if (this.stars.length === 0) return;
+
+    // Create off-screen canvas
+    this.starCanvas = document.createElement('canvas');
+    this.starCanvas.width = this.canvasWidth;
+    this.starCanvas.height = this.canvasHeight;
+    this.starCtx = this.starCanvas.getContext('2d');
+
+    // Render all stars once to the off-screen canvas
+    // This is the ONLY time we'll draw individual stars
+    this.stars.forEach(star => {
+      this.starCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+      this.starCtx.beginPath();
+      this.starCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      this.starCtx.fill();
+    });
+
+    console.log(`✨ Pre-rendered ${this.stars.length} stars to off-screen canvas`);
   }
 
   /**
@@ -108,20 +142,27 @@ export class World {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw(ctx) {
-    // Sky gradient (use theme colors)
+    // Sky gradient (use theme colors) - CACHED
     const skyColors = this.theme?.sky?.gradient || ['#87CEEB', '#B0E0F0', '#E0F6FF'];
-    const gradient = ctx.createLinearGradient(0, 0, 0, this.canvasHeight);
 
-    if (skyColors.length === 3) {
-      gradient.addColorStop(0, skyColors[0]);
-      gradient.addColorStop(0.5, skyColors[1]);
-      gradient.addColorStop(1, skyColors[2]);
-    } else {
-      // Fallback for different gradient lengths
-      skyColors.forEach((color, index) => {
-        gradient.addColorStop(index / (skyColors.length - 1), color);
-      });
-    }
+    // Use gradient cache instead of creating new gradient every frame
+    const colorStops = skyColors.length === 3
+      ? [
+          { offset: 0, color: skyColors[0] },
+          { offset: 0.5, color: skyColors[1] },
+          { offset: 1, color: skyColors[2] }
+        ]
+      : skyColors.map((color, index) => ({
+          offset: index / (skyColors.length - 1),
+          color: color
+        }));
+
+    const gradient = gradientCache.getLinear(
+      ctx,
+      `sky-${this.theme?.id || 'default'}`,
+      0, 0, 0, this.canvasHeight,
+      colorStops
+    );
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
@@ -139,19 +180,29 @@ export class World {
   }
 
   /**
-   * Draw stars (space theme)
+   * Draw stars (space theme) using off-screen canvas for performance
    * @param {CanvasRenderingContext2D} ctx
    */
   drawStars(ctx) {
-    this.stars.forEach(star => {
-      const twinkle = (Math.sin(star.twinkleOffset) + 1) / 2; // 0 to 1
-      const opacity = star.opacity * (0.5 + twinkle * 0.5);
+    if (this.starCanvas) {
+      // OPTIMIZED: Use single drawImage() call instead of 150 arc() calls
+      // Apply subtle twinkling via global alpha
+      const avgTwinkle = Math.sin(Date.now() * 0.001) * 0.1 + 0.9; // 0.8 to 1.0
+      ctx.globalAlpha = avgTwinkle;
+      ctx.drawImage(this.starCanvas, 0, 0);
+      ctx.globalAlpha = 1.0; // Reset
+    } else {
+      // Fallback to individual star rendering (shouldn't happen)
+      this.stars.forEach(star => {
+        const twinkle = (Math.sin(star.twinkleOffset) + 1) / 2; // 0 to 1
+        const opacity = star.opacity * (0.5 + twinkle * 0.5);
 
-      ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-      ctx.fill();
-    });
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
   }
 
   /**
@@ -323,13 +374,12 @@ export class World {
       getColor(this.theme?.clouds?.tertiaryColor, defaultColors[2])
     ];
 
-    clouds.forEach(cloud => {
+    clouds.forEach((cloud, cloudIdx) => {
       const yDrift = Math.sin(cloud.yOffset) * cloud.yDrift * 4;
       const y = cloud.y + yDrift;
 
       // Create glowing nebula effect with multiple colors
       const colorIndex = Math.floor(cloud.x / 100) % 3;
-      const gradient = ctx.createRadialGradient(cloud.x, y, 0, cloud.x, y, cloud.size * 2);
 
       // Safely handle color replacement with guaranteed string values
       // Triple fallback: theme color -> colors array -> default array -> hard-coded default
@@ -342,9 +392,20 @@ export class World {
       const safeColor1 = (typeof color1 === 'string' && color1) ? color1 : 'rgba(147, 112, 219, 0.3)';
       const safeColor2 = (typeof color2 === 'string' && color2) ? color2 : 'rgba(138, 43, 226, 0.2)';
 
-      gradient.addColorStop(0, safeColor0.replace(/[\d.]+\)/, `${cloud.opacity * 0.8})`));
-      gradient.addColorStop(0.5, safeColor1.replace(/[\d.]+\)/, `${cloud.opacity * 0.5})`));
-      gradient.addColorStop(1, safeColor2.replace(/[\d.]+\)/, '0)'));
+      // CACHED: Use gradient cache with cloud-specific ID
+      const colorStops = [
+        { offset: 0, color: safeColor0.replace(/[\d.]+\)/, `${cloud.opacity * 0.8})`) },
+        { offset: 0.5, color: safeColor1.replace(/[\d.]+\)/, `${cloud.opacity * 0.5})`) },
+        { offset: 1, color: safeColor2.replace(/[\d.]+\)/, '0)') }
+      ];
+
+      const gradient = gradientCache.getRadial(
+        ctx,
+        `nebula-${colorIndex}-${Math.floor(cloud.opacity * 10)}-${cloudIdx}`,
+        cloud.x, y, 0,
+        cloud.x, y, cloud.size * 2,
+        colorStops
+      );
 
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -356,11 +417,8 @@ export class World {
 
       ctx.fill();
 
-      // Add glow effect
-      ctx.shadowColor = safeColor0.replace(/[\d.]+\)/, '0.3)');
-      ctx.shadowBlur = 20;
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      // REMOVED: shadowBlur (expensive on mobile)
+      // Glow effect is now handled by the outer gradient stop with alpha fade
     });
   }
 
@@ -372,5 +430,16 @@ export class World {
   resize(width, height) {
     this.canvasWidth = width;
     this.canvasHeight = height;
+
+    // Regenerate star canvas if stars exist
+    if (this.stars.length > 0) {
+      const starCount = this.isMobile ? 50 : 150;
+      this.stars = [];
+      this.generateStars(starCount);
+      this.createStarCanvas();
+    }
+
+    // Clear gradient cache on resize
+    gradientCache.clear();
   }
 }

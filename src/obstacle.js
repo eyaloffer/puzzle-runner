@@ -2,6 +2,8 @@
  * Obstacle class - Theme-based obstacles (pipes, spikes, coral, asteroids)
  */
 
+import { gradientCache } from './utils/gradientCache.js';
+
 export class Obstacle {
   constructor(x, canvasHeight, gapY, gapSize = 150, theme = null) {
     this.x = x;
@@ -77,22 +79,36 @@ export class Obstacle {
     const colors = this.theme?.obstacles?.colors || ['#2E7D32', '#4CAF50', '#81C784', '#4CAF50', '#2E7D32'];
     const capColors = this.theme?.obstacles?.capColors || ['#1B5E20', '#388E3C', '#66BB6A', '#388E3C', '#1B5E20'];
     const outlineColor = this.theme?.obstacles?.outlineColor || '#1B5E20';
-    
-    // Create horizontal gradient for 3D pipe effect
-    const pipeGradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-    pipeGradient.addColorStop(0, colors[0]);
-    pipeGradient.addColorStop(0.2, colors[1]);
-    pipeGradient.addColorStop(0.5, colors[2]);
-    pipeGradient.addColorStop(0.8, colors[3]);
-    pipeGradient.addColorStop(1, colors[4]);
 
-    // Create gradient for caps (slightly darker/more contrast)
-    const capGradient = ctx.createLinearGradient(this.x - capOverhang, 0, this.x + this.width + capOverhang, 0);
-    capGradient.addColorStop(0, capColors[0]);
-    capGradient.addColorStop(0.15, capColors[1]);
-    capGradient.addColorStop(0.5, capColors[2]);
-    capGradient.addColorStop(0.85, capColors[3]);
-    capGradient.addColorStop(1, capColors[4]);
+    // CACHED: Create horizontal gradient for 3D pipe effect
+    const pipeColorStops = [
+      { offset: 0, color: colors[0] },
+      { offset: 0.2, color: colors[1] },
+      { offset: 0.5, color: colors[2] },
+      { offset: 0.8, color: colors[3] },
+      { offset: 1, color: colors[4] }
+    ];
+    const pipeGradient = gradientCache.getLinear(
+      ctx,
+      `pipe-body-${this.theme?.id || 'default'}`,
+      this.x, 0, this.x + this.width, 0,
+      pipeColorStops
+    );
+
+    // CACHED: Create gradient for caps (slightly darker/more contrast)
+    const capColorStops = [
+      { offset: 0, color: capColors[0] },
+      { offset: 0.15, color: capColors[1] },
+      { offset: 0.5, color: capColors[2] },
+      { offset: 0.85, color: capColors[3] },
+      { offset: 1, color: capColors[4] }
+    ];
+    const capGradient = gradientCache.getLinear(
+      ctx,
+      `pipe-cap-${this.theme?.id || 'default'}`,
+      this.x - capOverhang, 0, this.x + this.width + capOverhang, 0,
+      capColorStops
+    );
     
     // Top pipe body
     ctx.fillStyle = pipeGradient;
@@ -249,17 +265,14 @@ export class Obstacle {
     const glowColor = this.theme.obstacles.glowColor;
     const outlineColor = this.theme.obstacles.outlineColor;
 
-    // Add glow effect
-    ctx.shadowColor = glowColor;
-    ctx.shadowBlur = 15;
+    // REMOVED: shadowBlur (expensive on mobile)
+    // Glow effect is now handled by darker gradient instead
 
     // Draw top spikes (pointing down)
     this.drawSpikeRow(ctx, 0, this.topHeight, colors, outlineColor, 'down');
 
     // Draw bottom spikes (pointing up)
     this.drawSpikeRow(ctx, this.bottomY, this.canvasHeight, colors, outlineColor, 'up');
-
-    ctx.shadowBlur = 0;
   }
 
   /**
@@ -276,10 +289,18 @@ export class Obstacle {
     const spikeHeight = 40;
     const numSpikes = Math.ceil((endY - startY) / spikeHeight);
 
-    const gradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-    gradient.addColorStop(0, colors[0]);
-    gradient.addColorStop(0.5, colors[2]);
-    gradient.addColorStop(1, colors[4]);
+    // CACHED: Spike gradient
+    const colorStops = [
+      { offset: 0, color: colors[0] },
+      { offset: 0.5, color: colors[2] },
+      { offset: 1, color: colors[4] }
+    ];
+    const gradient = gradientCache.getLinear(
+      ctx,
+      `spike-${this.theme?.id || 'default'}`,
+      this.x, 0, this.x + this.width, 0,
+      colorStops
+    );
 
     for (let i = 0; i < numSpikes; i++) {
       const y = startY + i * spikeHeight;
@@ -333,12 +354,20 @@ export class Obstacle {
    * @param {string} outlineColor
    */
   drawWavyCoral(ctx, startY, endY, colors, outlineColor) {
-    const gradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-    gradient.addColorStop(0, colors[0]);
-    gradient.addColorStop(0.25, colors[1]);
-    gradient.addColorStop(0.5, colors[2]);
-    gradient.addColorStop(0.75, colors[3]);
-    gradient.addColorStop(1, colors[4]);
+    // CACHED: Coral gradient
+    const colorStops = [
+      { offset: 0, color: colors[0] },
+      { offset: 0.25, color: colors[1] },
+      { offset: 0.5, color: colors[2] },
+      { offset: 0.75, color: colors[3] },
+      { offset: 1, color: colors[4] }
+    ];
+    const gradient = gradientCache.getLinear(
+      ctx,
+      `coral-${startY === 0 ? 'top' : 'bottom'}-${this.theme?.id || 'default'}`,
+      this.x, 0, this.x + this.width, 0,
+      colorStops
+    );
 
     ctx.fillStyle = gradient;
     ctx.beginPath();
@@ -413,11 +442,18 @@ export class Obstacle {
     const asteroidX = this.x + columnWidth / 2;
     const asteroidY = position === 'top' ? this.topHeight - 30 : this.bottomY + 30;
 
-    // Create linear gradient for column (simpler than radial)
-    const columnGradient = ctx.createLinearGradient(this.x, 0, this.x + columnWidth, 0);
-    columnGradient.addColorStop(0, colors[0]);
-    columnGradient.addColorStop(0.5, colors[2]);
-    columnGradient.addColorStop(1, colors[0]);
+    // CACHED: Create linear gradient for column (simpler than radial)
+    const columnColorStops = [
+      { offset: 0, color: colors[0] },
+      { offset: 0.5, color: colors[2] },
+      { offset: 1, color: colors[0] }
+    ];
+    const columnGradient = gradientCache.getLinear(
+      ctx,
+      `asteroid-column-${position}-${this.theme?.id || 'default'}`,
+      this.x, 0, this.x + columnWidth, 0,
+      columnColorStops
+    );
 
     ctx.fillStyle = columnGradient;
 
@@ -445,11 +481,18 @@ export class Obstacle {
     ctx.translate(asteroidX, asteroidY);
     ctx.rotate(this.rotation);
 
-    // Use simple box shape instead of complex polygon
-    const gradient = ctx.createLinearGradient(-asteroidSize / 2, -asteroidSize / 2, asteroidSize / 2, asteroidSize / 2);
-    gradient.addColorStop(0, colors[0]);
-    gradient.addColorStop(0.5, colors[2]);
-    gradient.addColorStop(1, colors[1]);
+    // CACHED: Use simple box shape instead of complex polygon
+    const asteroidColorStops = [
+      { offset: 0, color: colors[0] },
+      { offset: 0.5, color: colors[2] },
+      { offset: 1, color: colors[1] }
+    ];
+    const gradient = gradientCache.getLinear(
+      ctx,
+      `asteroid-rock-${position}-${this.theme?.id || 'default'}`,
+      -asteroidSize / 2, -asteroidSize / 2, asteroidSize / 2, asteroidSize / 2,
+      asteroidColorStops
+    );
 
     ctx.fillStyle = gradient;
     ctx.fillRect(-asteroidSize / 2, -asteroidSize / 2, asteroidSize, asteroidSize);
