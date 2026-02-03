@@ -208,8 +208,12 @@ function setupInput() {
   });
   
   // Mouse/touch input - Click/tap to flap
-  canvas.addEventListener('click', () => {
+  // Use touchstart for iOS to prevent text selection and improve responsiveness
+  const handleTap = (e) => {
     if (gamePaused) return;
+
+    // Prevent default touch behavior (text selection, zoom, copy menu on iOS)
+    e.preventDefault();
 
     if (!gameStarted) {
       startGame();
@@ -217,6 +221,17 @@ function setupInput() {
       resetGame();
     } else if (player) {
       player.flap();
+    }
+  };
+
+  // Touch events for mobile (iOS/Android) - prevents 300ms delay and text selection
+  canvas.addEventListener('touchstart', handleTap, { passive: false });
+
+  // Click for desktop (fallback)
+  canvas.addEventListener('click', (e) => {
+    // Only handle click if not from touch (to avoid double-trigger)
+    if (e.detail !== 0) {
+      handleTap(e);
     }
   });
   
