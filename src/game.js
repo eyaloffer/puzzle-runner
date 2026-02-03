@@ -95,8 +95,15 @@ function isMobileDevice() {
   }
 }
 
+// Mobile rendering quality settings
+const IS_MOBILE = isMobileDevice();
+let MOBILE_STAR_COUNT = 50;           // Reduced from 150 for mobile
+let MOBILE_CLOUD_REDUCTION = 0.5;     // 50% fewer clouds on mobile
+let MOBILE_PARTICLE_REDUCTION = 0.6;  // 40% fewer particles on mobile
+
 // Apply mobile-friendly overrides
-if (isMobileDevice()) {
+if (IS_MOBILE) {
+  console.log('📱 Mobile device detected - applying physics and rendering optimizations');
   PLAYER_X = 120;
   OBSTACLE_SPAWN_DISTANCE = 420;
   GAP_SIZE = 260;
@@ -201,8 +208,12 @@ function setupInput() {
   });
   
   // Mouse/touch input - Click/tap to flap
-  canvas.addEventListener('click', () => {
+  // Use touchstart for iOS to prevent text selection and improve responsiveness
+  const handleTap = (e) => {
     if (gamePaused) return;
+
+    // Prevent default touch behavior (text selection, zoom, copy menu on iOS)
+    e.preventDefault();
 
     if (!gameStarted) {
       startGame();
@@ -210,6 +221,17 @@ function setupInput() {
       resetGame();
     } else if (player) {
       player.flap();
+    }
+  };
+
+  // Touch events for mobile (iOS/Android) - prevents 300ms delay and text selection
+  canvas.addEventListener('touchstart', handleTap, { passive: false });
+
+  // Click for desktop (fallback)
+  canvas.addEventListener('click', (e) => {
+    // Only handle click if not from touch (to avoid double-trigger)
+    if (e.detail !== 0) {
+      handleTap(e);
     }
   });
   
@@ -333,7 +355,7 @@ function startGame() {
     showCountdown();
   } else {
     // Skip countdown on retry - initialize and start immediately
-    world = new World(canvasWidth, canvasHeight, theme);
+    world = new World(canvasWidth, canvasHeight, theme, IS_MOBILE, MOBILE_STAR_COUNT, MOBILE_CLOUD_REDUCTION);
     player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji, theme });
 
     // Quick pre-render
@@ -350,41 +372,54 @@ function showCountdown() {
   countdownNumber.textContent = '3';
 
   // Create game objects early (during countdown) to pre-cache gradients
-  world = new World(canvasWidth, canvasHeight, theme);
+  world = new World(canvasWidth, canvasHeight, theme, IS_MOBILE, MOBILE_STAR_COUNT, MOBILE_CLOUD_REDUCTION);
   player = new Player(PLAYER_X, canvasHeight / 2, { gravity: PLAYER_GRAVITY, flapStrength: PLAYER_FLAP, emoji: playerEmoji, theme });
 
-  // Pre-render multiple frames to cache all gradients (off-screen)
+  // ENHANCED: Create sample obstacles and collectibles to cache their gradients
+  // This forces the browser to cache obstacle/collectible gradients during countdown
+  const sampleObstacles = [
+    new Obstacle(canvasWidth, canvasHeight, 200, GAP_SIZE, theme),
+    new Obstacle(canvasWidth + 350, canvasHeight, 400, GAP_SIZE, theme)
+  ];
+  const sampleCollectible = new Collectible(
+    canvasWidth / 2, canvasHeight / 2, 'A', 0, theme
+  );
+
+  // Pre-render 15 frames instead of 3 to thoroughly cache all gradients
   // This is especially important for complex themes (space, evil) with heavy gradients
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  world.draw(ctx);
+  function preRenderFrames(count) {
+    if (count <= 0) return;
 
-  // Continue pre-rendering during countdown to optimize gradients
-  requestAnimationFrame(() => {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     world.draw(ctx);
-    requestAnimationFrame(() => {
-      world.draw(ctx);
-    });
-  });
+    sampleObstacles.forEach(obs => obs.draw(ctx));
+    sampleCollectible.draw(ctx);
+    player.draw(ctx);
 
-  // Countdown sequence: 3 → 2 → 1 → GO!
+    requestAnimationFrame(() => preRenderFrames(count - 1));
+  }
+
+  preRenderFrames(15); // Render 15 frames to thoroughly cache gradients
+
+  // Countdown sequence: 3 → 2 → 1 → GO! (extended to 1.5 seconds total)
   setTimeout(() => {
     countdownNumber.textContent = '2';
     // Trigger animation by removing and re-adding (forces restart)
     countdownNumber.style.animation = 'none';
     setTimeout(() => { countdownNumber.style.animation = ''; }, 10);
-  }, 333);
+  }, 500); // Extended from 333ms
 
   setTimeout(() => {
     countdownNumber.textContent = '1';
     countdownNumber.style.animation = 'none';
     setTimeout(() => { countdownNumber.style.animation = ''; }, 10);
-  }, 666);
+  }, 1000); // Extended from 666ms
 
   setTimeout(() => {
     // Hide countdown and start game
     countdown.classList.add('hidden');
     beginGame();
-  }, 1000);
+  }, 1500); // Extended from 1000ms (now 1.5 seconds total)
 }
 
 // Begin the actual game after countdown

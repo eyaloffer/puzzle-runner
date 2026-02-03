@@ -78,19 +78,23 @@ export class Collectible {
       currentGlowRadius = this.glowRadius * pulseMultiplier;
     }
 
-    // Outer glow
-    ctx.shadowColor = this.glowColor;
-    ctx.shadowBlur = currentGlowRadius;
+    // OPTIMIZED: Fake glow using layered circles instead of shadowBlur
+    // shadowBlur is expensive on mobile, this achieves similar effect
+    const glowLayers = 3;
+    for (let i = glowLayers; i > 0; i--) {
+      const layerRadius = this.width / 2 + (currentGlowRadius / glowLayers) * i;
+      const layerOpacity = 0.15 / i; // Decreasing opacity for outer layers
+      ctx.fillStyle = this.glowColor.replace(/[\d.]+\)/, `${layerOpacity})`);
+      ctx.beginPath();
+      ctx.arc(0, 0, layerRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Draw collectible background
     ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(0, 0, this.width / 2, 0, Math.PI * 2);
     ctx.fill();
-
-    // Reset shadow for inner elements
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = 'transparent';
 
     // Draw inner circle
     ctx.fillStyle = this.innerColor;

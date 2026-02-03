@@ -293,10 +293,8 @@ class SparkleParticle {
     ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw ✨ emoji with glow
+    // Draw ✨ emoji (removed shadowBlur for mobile performance)
     ctx.globalAlpha = this.alpha;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = 'rgba(255, 215, 0, 0.9)';
     ctx.font = `${size}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
