@@ -64,15 +64,41 @@
     <h1>Birdle</h1>
     <p class="subtitle">Create a secret phrase challenge for your friends!</p>
     
+    <!-- Puzzle type tabs -->
+    <div class="puzzle-tabs">
+      <button class="tab-btn active" data-tab="text">📝 Text Puzzle</button>
+      <button class="tab-btn" data-tab="image">🖼️ Image Puzzle</button>
+    </div>
+
     <div class="form-section">
-      <label for="phraseInput">Enter a word or phrase:</label>
-      <input
-        type="text"
-        id="phraseInput"
-        placeholder="e.g., Hello World!"
-        maxlength="200"
-        autofocus
-      />
+      <!-- Text mode -->
+      <div id="textTabContent" class="tab-content">
+        <label for="phraseInput">Enter a word or phrase:</label>
+        <input
+          type="text"
+          id="phraseInput"
+          placeholder="e.g., Hello World!"
+          maxlength="200"
+          autofocus
+        />
+      </div>
+
+      <!-- Image mode -->
+      <div id="imageTabContent" class="tab-content hidden">
+        <label>Upload an image:</label>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="imageUpload" accept="image/*" class="file-input">
+          <label for="imageUpload" class="upload-label">
+            <span class="upload-icon">📁</span>
+            <span class="upload-text">Click to select image</span>
+          </label>
+        </div>
+        <div class="image-preview-wrap hidden" id="imagePreviewWrap">
+          <img id="imagePreview" alt="Preview" />
+          <button class="remove-btn" id="removeImageBtn">✕ Remove</button>
+        </div>
+        <p class="disclaimer">🔒 Third-party hosted — please be mindful of what you share.</p>
+      </div>
 
       <div class="emoji-section">
         <label>Choose your character:</label>
@@ -102,14 +128,17 @@
           <button type="button" class="theme-option" data-theme="evil">
             <span class="theme-emoji">🔥</span>
             <span class="theme-name">Evil</span>
+            <span class="coming-soon">Coming soon</span>
           </button>
           <button type="button" class="theme-option" data-theme="ocean">
             <span class="theme-emoji">🌊</span>
             <span class="theme-name">Ocean</span>
+            <span class="coming-soon">Coming soon</span>
           </button>
           <button type="button" class="theme-option" data-theme="space">
             <span class="theme-emoji">🌌</span>
             <span class="theme-name">Space</span>
+            <span class="coming-soon">Coming soon</span>
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { encodeToUrlSafe } from './utils/urlEncoding.js';
+import { uploadImage } from './utils/imgbbUpload.js';
 
 // DOM elements
 const phraseInput = document.getElementById('phraseInput');
@@ -14,6 +15,15 @@ const errorMessage = document.getElementById('errorMessage');
 const shareTwitterBtn = document.getElementById('shareTwitterBtn');
 const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
 
+// Tab / image-mode elements
+const tabBtns = document.querySelectorAll('.tab-btn');
+const textTabContent = document.getElementById('textTabContent');
+const imageTabContent = document.getElementById('imageTabContent');
+const imageUploadInput = document.getElementById('imageUpload');
+const imagePreview = document.getElementById('imagePreview');
+const imagePreviewWrap = document.getElementById('imagePreviewWrap');
+const removeImageBtn = document.getElementById('removeImageBtn');
+
 // Validation constants
 const MIN_PHRASE_LENGTH = 2;
 const MAX_PHRASE_LENGTH = 100;
@@ -22,6 +32,10 @@ const MAX_PHRASE_LENGTH = 100;
 let selectedEmoji = '🐦';
 let selectedTheme = 'classic';
 let currentGameUrl = '';
+
+// Active tab and selected image file
+let activeTab = 'text';
+let selectedFile = null;
 
 // Handle emoji grid selection
 emojiGrid.addEventListener('click', (e) => {
@@ -58,12 +72,65 @@ customEmojiInput.addEventListener('focus', () => {
 // Handle theme grid selection
 themeGrid.addEventListener('click', (e) => {
   const option = e.target.closest('.theme-option');
-  if (!option) return;
+  if (!option || option.classList.contains('disabled')) return;
 
   // Update selection
   themeGrid.querySelectorAll('.theme-option').forEach(btn => btn.classList.remove('selected'));
   option.classList.add('selected');
   selectedTheme = option.dataset.theme;
+});
+
+// Disable / re-enable non-classic themes (image mode only supports classic for now)
+function setThemesDisabled(disabled) {
+  themeGrid.querySelectorAll('.theme-option').forEach(btn => {
+    if (btn.dataset.theme === 'classic') return;
+    btn.classList.toggle('disabled', disabled);
+    if (disabled && btn.classList.contains('selected')) {
+      btn.classList.remove('selected');
+      themeGrid.querySelector('[data-theme="classic"]').classList.add('selected');
+      selectedTheme = 'classic';
+    }
+  });
+}
+
+// --- Tab switching ---
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    tabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = tab;
+
+    textTabContent.classList.toggle('hidden', tab !== 'text');
+    imageTabContent.classList.toggle('hidden', tab !== 'image');
+
+    setThemesDisabled(tab === 'image');
+    hideError();
+    linkSection.classList.add('hidden');
+  });
+});
+
+// --- Image upload / preview ---
+imageUploadInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    showError('Please select an image file (JPG, PNG, GIF).');
+    return;
+  }
+
+  selectedFile = file;
+  imagePreview.src = URL.createObjectURL(file);
+  imagePreviewWrap.classList.remove('hidden');
+  hideError();
+});
+
+removeImageBtn.addEventListener('click', () => {
+  selectedFile = null;
+  imageUploadInput.value = '';
+  imagePreview.src = '';
+  imagePreviewWrap.classList.add('hidden');
 });
 
 // Validate phrase input
@@ -107,42 +174,51 @@ function hideError() {
   errorMessage.classList.add('hidden');
 }
 
-// Generate link when button is clicked
-generateBtn.addEventListener('click', () => {
-  const phrase = phraseInput.value.trim();
-
-  // Validate phrase
-  const phraseError = validatePhrase(phrase);
-  if (phraseError) {
-    showError(phraseError);
-    return;
-  }
-
-  // Use custom emoji if entered
+// Generate link when button is clicked (async for image upload)
+generateBtn.addEventListener('click', async () => {
+  // Shared emoji validation
   const emoji = customEmojiInput.value ? [...customEmojiInput.value][0] : selectedEmoji;
-
-  // Validate emoji
   const emojiError = validateEmoji(emoji);
-  if (emojiError) {
-    showError(emojiError);
-    return;
-  }
+  if (emojiError) { showError(emojiError); return; }
 
-  // Hide any previous error
   hideError();
 
-  // Encode the phrase
-  const encoded = encodeToUrlSafe(phrase);
-
-  // Create the game URL with emoji and theme parameters
   const baseUrl = window.location.origin + window.location.pathname.replace('sender.html', '');
-  currentGameUrl = `${baseUrl}game.html?p=${encoded}&e=${encodeURIComponent(emoji)}&t=${selectedTheme}`;
+
+  if (activeTab === 'text') {
+    // --- Text mode (existing logic) ---
+    const phrase = phraseInput.value.trim();
+    const phraseError = validatePhrase(phrase);
+    if (phraseError) { showError(phraseError); return; }
+
+    const encoded = encodeToUrlSafe(phrase);
+    currentGameUrl = `${baseUrl}game.html?p=${encoded}&e=${encodeURIComponent(emoji)}&t=${selectedTheme}`;
+  } else {
+    // --- Image mode ---
+    if (!selectedFile) {
+      showError('Please select an image first.');
+      return;
+    }
+
+    // Show loading state
+    generateBtn.textContent = 'Uploading…';
+    generateBtn.disabled = true;
+
+    try {
+      const displayUrl = await uploadImage(selectedFile);
+      currentGameUrl = `${baseUrl}game.html?m=img&i=${encodeURIComponent(displayUrl)}&e=${encodeURIComponent(emoji)}&t=${selectedTheme}`;
+    } catch (err) {
+      showError(err.message);
+      return;
+    } finally {
+      generateBtn.textContent = 'Generate Link';
+      generateBtn.disabled = false;
+    }
+  }
 
   // Display the link
   generatedLink.value = currentGameUrl;
   linkSection.classList.remove('hidden');
-
-  // Hide success message if it was showing
   copySuccess.classList.add('hidden');
 });
 

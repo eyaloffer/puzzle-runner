@@ -6,6 +6,9 @@ import { Collectible } from './collectible.js';
 import { Obstacle } from './obstacle.js';
 import { ParticleSystem } from './particles.js';
 import { getTheme } from './themes.js';
+import { ImagePuzzle } from './imagePuzzle.js';
+import { JigsawCollectible } from './jigsawCollectible.js';
+import { loadAndResize } from './utils/imageProcessor.js';
 
 // Get URL parameters
 const urlParams = new URLSearchParams(window.location.search);
@@ -44,6 +47,14 @@ const shareTwitterBtn = document.getElementById('shareTwitter');
 const shareWhatsAppBtn = document.getElementById('shareWhatsApp');
 const timerDisplay = document.getElementById('timerDisplay');
 const completionStats = document.getElementById('completionStats');
+const victoryImageCanvas = document.getElementById('victoryImageCanvas');
+const instructionText = document.getElementById('instructionText');
+
+// Image-mode state
+let imageMode = false;
+let imagePuzzle = null;
+let imagePuzzleCanvas = null;
+let usedFallback = false;
 
 // Game state
 let puzzle = null;
@@ -112,7 +123,7 @@ let piecesToSpawn = [];
 let frameCount = 0;
 
 // Initialize the game
-function init() {
+async function init() {
   // Set controls hint based on device
   const controlsHint = document.getElementById('controlsHint');
   if (controlsHint) {
@@ -122,50 +133,80 @@ function init() {
       controlsHint.innerHTML = '<strong>Click</strong> or press <strong>SPACE</strong> to flap';
     }
   }
-  
-  // Check if phrase parameter exists
-  if (!encodedPhrase) {
-    alert('No puzzle found! Please use a valid link from the sender page.');
-    window.location.href = 'sender.html';
-    return;
-  }
-  
-  try {
-    // Decode the phrase
-    const phrase = decodeFromUrlSafe(encodedPhrase);
-    console.log('Decoded phrase:', phrase);
 
-    // Track decoded phrase and theme in analytics (production only)
-    if (typeof gtag !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      gtag('event', 'puzzle_played', {
-        'phrase': phrase,
-        'theme': themeId
-      });
+  // Detect puzzle mode from URL
+  const mode = urlParams.get('m') || 'txt';
+
+  if (mode === 'img') {
+    // --- Image puzzle mode ---
+    const imageUrl = urlParams.get('i') ? decodeURIComponent(urlParams.get('i')) : null;
+    if (!imageUrl) {
+      alert('No image found! Please use a valid link.');
+      window.location.href = 'sender.html';
+      return;
     }
 
-    // Create puzzle (spaces are auto-collected in the Puzzle constructor)
-    puzzle = new Puzzle(phrase);
-    console.log('Puzzle pieces:', puzzle.pieces);
-    console.log('Non-space pieces to collect:', puzzle.getNonSpaceCount());
-    
-    // Set up canvas
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    
-    // Set up input listeners
-    setupInput();
-    
-    // Update HUD
-    updateHUD();
-    
-    // Draw initial state
-    drawInitialScreen();
-    
-  } catch (error) {
-    console.error('Error decoding phrase:', error);
-    alert('Invalid puzzle link! Please check the URL.');
-    window.location.href = 'sender.html';
+    try {
+      // Load image (with automatic fallback to cute dog on failure)
+      const result = await loadAndResize(imageUrl, 800, 600);
+      imagePuzzleCanvas = result.canvas;
+      usedFallback = result.usedFallback;
+      imageMode = true;
+
+      // Create image puzzle (splits into 8 pieces)
+      imagePuzzle = new ImagePuzzle(imagePuzzleCanvas);
+
+      // Update instructions for image mode
+      if (usedFallback) {
+        instructionText.innerHTML = '<strong style="color:#FFD93D">Didn\'t manage to load the intended image but here\'s a cute dog</strong><br>Collect all the pieces to reveal the image!';
+      } else {
+        instructionText.textContent = 'Collect all the pieces to reveal the image!';
+      }
+
+      // Hide the guess button — no phrase to guess in image mode
+      guessBtn.style.display = 'none';
+
+      // Hide the phrase label in HUD, show only progress
+      piecesDisplay.style.display = 'none';
+    } catch (error) {
+      console.error('Image puzzle init error:', error);
+      alert('Failed to load puzzle image.');
+      window.location.href = 'sender.html';
+      return;
+    }
+  } else {
+    // --- Text puzzle mode (existing logic) ---
+    if (!encodedPhrase) {
+      alert('No puzzle found! Please use a valid link from the sender page.');
+      window.location.href = 'sender.html';
+      return;
+    }
+
+    try {
+      const phrase = decodeFromUrlSafe(encodedPhrase);
+      console.log('Decoded phrase:', phrase);
+
+      if (typeof gtag !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        gtag('event', 'puzzle_played', { 'phrase': phrase, 'theme': themeId });
+      }
+
+      puzzle = new Puzzle(phrase);
+      console.log('Puzzle pieces:', puzzle.pieces);
+      console.log('Non-space pieces to collect:', puzzle.getNonSpaceCount());
+    } catch (error) {
+      console.error('Error decoding phrase:', error);
+      alert('Invalid puzzle link! Please check the URL.');
+      window.location.href = 'sender.html';
+      return;
+    }
   }
+
+  // Shared setup for both modes
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  setupInput();
+  updateHUD();
+  drawInitialScreen();
 }
 
 // Set up keyboard and mouse input
@@ -194,7 +235,7 @@ function setupInput() {
       } else if (player) {
         player.flap();
       }
-    } else if (e.code === 'KeyG' && gameStarted && !gameOver) {
+    } else if (e.code === 'KeyG' && gameStarted && !gameOver && !imageMode) {
       e.preventDefault();
       showGuessModal();
     }
@@ -264,7 +305,7 @@ function resizeCanvas() {
     world.resize(canvasWidth, canvasHeight);
   }
 
-  if (!gameStarted && puzzle) {
+  if (!gameStarted && (puzzle || imagePuzzle)) {
     drawInitialScreen();
   }
 }
@@ -292,18 +333,19 @@ function drawInitialScreen() {
 
 // Update HUD display
 function updateHUD() {
-  // Hide phrase when all letters are collected
-  if (puzzle.isComplete()) {
-    piecesDisplay.textContent = '';
+  if (imageMode) {
+    progressText.textContent = `${imagePuzzle.getCollectedCount()} / ${imagePuzzle.getTotalPieces()} pieces`;
   } else {
-    piecesDisplay.textContent = puzzle.getReconstructedPhrase();
+    if (puzzle.isComplete()) {
+      piecesDisplay.textContent = '';
+    } else {
+      piecesDisplay.textContent = puzzle.getReconstructedPhrase();
+    }
+    progressText.textContent = `${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`;
+
+    const hasHebrew = /[\u0590-\u05FF]/.test(puzzle.originalPhrase);
+    piecesDisplay.style.direction = hasHebrew ? 'rtl' : 'ltr';
   }
-
-  progressText.textContent = `${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`;
-
-  // Apply RTL for Hebrew phrases
-  const hasHebrew = /[\u0590-\u05FF]/.test(puzzle.originalPhrase);
-  piecesDisplay.style.direction = hasHebrew ? 'rtl' : 'ltr';
 }
 
 // Start the game
@@ -397,8 +439,12 @@ function beginGame() {
     sessionStartTime = performance.now();
   }
 
-  // Initialize pieces to spawn - only one index per distinct non-space character
-  piecesToSpawn = puzzle.getUniqueNonSpaceIndices().slice();
+  // Initialize pieces to spawn
+  if (imageMode) {
+    piecesToSpawn = imagePuzzle.getAllIndices();
+  } else {
+    piecesToSpawn = puzzle.getUniqueNonSpaceIndices().slice();
+  }
   shuffleArray(piecesToSpawn);
 
   // Reset game state
@@ -549,7 +595,8 @@ function update() {
   checkCollisions();
   
   // Check for victory
-  if (puzzle.isComplete() && gameStarted && !gameOver) {
+  const puzzleComplete = imageMode ? imagePuzzle.isComplete() : puzzle.isComplete();
+  if (puzzleComplete && gameStarted && !gameOver) {
     gameStarted = false;
     cancelAnimationFrame(animationId);
     setTimeout(showVictory, 500);
@@ -606,38 +653,41 @@ function updateObstacles() {
 
 // Spawn a collectible attached to a specific obstacle's gap
 function spawnCollectibleInGap(obstacle) {
-  // Skip if no pieces left to spawn
   if (piecesToSpawn.length === 0) return;
-  
-  // Skip any indices that were already collected
-  while (piecesToSpawn.length > 0 && puzzle.collectedPieces[piecesToSpawn[0]]) {
+
+  // Skip already-collected indices
+  const collectedArr = imageMode ? imagePuzzle.collectedPieces : puzzle.collectedPieces;
+  while (piecesToSpawn.length > 0 && collectedArr[piecesToSpawn[0]]) {
     piecesToSpawn.shift();
   }
   if (piecesToSpawn.length === 0) return;
 
   const nextIndex = piecesToSpawn.shift();
-  const piece = puzzle.getPiece(nextIndex);
-  if (piece == null) return;
 
   const gap = obstacle.getGapBounds();
-  // Spawn AFTER the obstacle (to the right of the pipe) so player can collect it while flying through
-  const spawnX = obstacle.x + obstacle.width + 30; // place collectible past the pipe
-  
-  // Place collectible somewhere inside the gap (with small padding)
+  const spawnX = obstacle.x + obstacle.width + 30;
+
   const padding = 12;
   const availableHeight = Math.max(0, gap.height - padding * 2);
   let spawnY = gap.y + padding + Math.random() * availableHeight;
-
-  // Clamp to canvas bounds
   spawnY = Math.max(10, Math.min(canvasHeight - 50, spawnY));
 
-  const collectible = new Collectible(spawnX, spawnY, nextIndex, piece, theme);
-  // apply mobile-friendly adjustments
-  collectible.scrollSpeed = SCROLL_SPEED;
-  if (isMobileDevice()) {
-    collectible.width = 48;
-    collectible.height = 48;
+  let collectible;
+  if (imageMode) {
+    const pieceData = imagePuzzle.getPiece(nextIndex);
+    if (!pieceData) return;
+    collectible = new JigsawCollectible(spawnX, spawnY, nextIndex, imagePuzzleCanvas, pieceData, theme);
+  } else {
+    const piece = puzzle.getPiece(nextIndex);
+    if (piece == null) return;
+    collectible = new Collectible(spawnX, spawnY, nextIndex, piece, theme);
+    if (isMobileDevice()) {
+      collectible.width = 48;
+      collectible.height = 48;
+    }
   }
+
+  collectible.scrollSpeed = SCROLL_SPEED;
   collectibles.push(collectible);
 }
 
@@ -653,7 +703,8 @@ function updateCollectibles() {
     
     if (c.isOffScreen()) {
       // Re-add this piece to the spawn queue if it wasn't collected
-      if (!puzzle.collectedPieces[c.pieceIndex]) {
+      const collectedArr = imageMode ? imagePuzzle.collectedPieces : puzzle.collectedPieces;
+      if (!collectedArr[c.pieceIndex]) {
         piecesToSpawn.push(c.pieceIndex);
       }
       return false;
@@ -685,8 +736,19 @@ function checkCollisions() {
   collectibles.forEach(collectible => {
     if (!collectible.collected && collectible.intersects(playerBounds)) {
       collectible.collect();
-      // Collect all identical characters in the puzzle
-      puzzle.collectPiece(collectible.pieceIndex);
+
+      // Mark collected in the appropriate puzzle
+      if (imageMode) {
+        imagePuzzle.collectPiece(collectible.pieceIndex);
+      } else {
+        puzzle.collectPiece(collectible.pieceIndex);
+        // Remove any other on-screen collectibles of same character (text mode only)
+        collectibles.forEach(c => {
+          if (!c.collected && c.pieceText === collectible.pieceText) {
+            c.collected = true;
+          }
+        });
+      }
       updateHUD();
 
       // Create sparkle effect at collectible position
@@ -695,15 +757,8 @@ function checkCollisions() {
         collectible.y + collectible.height / 2
       );
 
-      // Remove any other on-screen collectibles of same character
-      collectibles.forEach(c => {
-        if (!c.collected && c.pieceText === collectible.pieceText) {
-          c.collected = true;
-        }
-      });
-
-      // Check if this was the last letter needed
-      const isLastLetter = puzzle.isComplete();
+      // Check if this was the last piece needed
+      const isLastLetter = imageMode ? imagePuzzle.isComplete() : puzzle.isComplete();
 
       if (isLastLetter) {
         // Special effect for last letter
@@ -777,11 +832,10 @@ function showGameOverScreen() {
   // Progress
   ctx.font = "20px 'Secular One', sans-serif";
   ctx.fillStyle = '#7EC8E3';
-  ctx.fillText(
-    `Collected: ${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`,
-    canvasWidth / 2,
-    canvasHeight / 2 + 60
-  );
+  const progressLabel = imageMode
+    ? `Collected: ${imagePuzzle.getCollectedCount()} / ${imagePuzzle.getTotalPieces()} pieces`
+    : `Collected: ${puzzle.getCollectedNonSpaceCount()} / ${puzzle.getNonSpaceCount()} letters`;
+  ctx.fillText(progressLabel, canvasWidth / 2, canvasHeight / 2 + 60);
 
   // Show fail counter on game over if greater than zero
   if (failCount > 0) {
@@ -803,8 +857,12 @@ function resetGame() {
   // Clear particle system
   particleSystem.clear();
 
-  // Reset puzzle collected state (keep spaces collected)
-  puzzle.resetCollected();
+  // Reset puzzle collected state
+  if (imageMode) {
+    imagePuzzle.resetCollected();
+  } else {
+    puzzle.resetCollected(); // keeps spaces collected
+  }
 
   // Restart the game
   startGame();
@@ -1103,7 +1161,25 @@ function showVictory() {
   completionTime = performance.now() - sessionStartTime;
 
   victoryScreen.classList.remove('hidden');
-  solvedPhrase.textContent = puzzle.originalPhrase;
+
+  if (imageMode) {
+    // Show the completed image instead of phrase
+    solvedPhrase.classList.add('hidden');
+    victoryImageCanvas.classList.remove('hidden');
+
+    // Scale source image to fit the victory canvas (max 500×280)
+    const maxW = 500, maxH = 280;
+    const scaleX = maxW / imagePuzzleCanvas.width;
+    const scaleY = maxH / imagePuzzleCanvas.height;
+    const scale = Math.min(scaleX, scaleY);
+    victoryImageCanvas.width = Math.round(imagePuzzleCanvas.width * scale);
+    victoryImageCanvas.height = Math.round(imagePuzzleCanvas.height * scale);
+
+    const vCtx = victoryImageCanvas.getContext('2d');
+    vCtx.drawImage(imagePuzzleCanvas, 0, 0, victoryImageCanvas.width, victoryImageCanvas.height);
+  } else {
+    solvedPhrase.textContent = puzzle.originalPhrase;
+  }
 
   // Show completion stats (time and fails on separate lines)
   if (completionStats) {
